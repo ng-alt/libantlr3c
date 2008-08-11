@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT(libantlr3c, 3.0.1, jimi@idle.ws)
+AC_INIT(libantlr3c, 3.1, jimi@idle.ws)
 AC_PREREQ(2.60)
 AC_COPYRIGHT([
  (The "BSD licence")
@@ -35,14 +35,16 @@ AC_CONFIG_SRCDIR(src/antlr3parser.c)
 
 
 AC_ARG_ENABLE([debuginfo],
-		[AS_HELP_STRING([--enable-debuginfo], [Compiles debug info into the library (default no)])],
-		 [DEBUGINF=1], [DEBUGINF=0])
+		[AS_HELP_STRING([--enable-debuginfo], [Compiles debug info into the library (default --disable-debuginfo)])],
+		[], [enable_debuginfo=no])
 
 AC_ARG_ENABLE([64bit],
-		[AS_HELP_STRING([--enable-64bit], [Turns on flags that produce 64 bit object code if any are required (default no)])],
-		[BIT64=1], [BIT64=0])
+		[AS_HELP_STRING([--enable-64bit], [Turns on flags that produce 64 bit object code if any are required (default --disable-64bit)])],
+		[], [enable_64bit=no])
 
-
+AC_ARG_ENABLE([antlrdebug],
+		[AS_HELP_STRING([--disable-antlrdebug], [Turns off default flags that include the antlr debugger in the runtime. Specify to remove debugger and the socket dependancies (default --enable-antlrdebug)])],
+		[], [enable_antlrdebug=yes])
 
 AM_INIT_AUTOMAKE(foreign)
 AC_LANG(C)
@@ -60,21 +62,21 @@ AC_MSG_CHECKING([compiler flags required for compiling ANTLR with $CC C compiler
 case $CC in
 xlc*)
  CPPCMNTFLAGS="-qcpluscmt"
- if test "$BIT64" = 1; then
+ if test x"$enable_64bit" = xyes; then
   CCFLAGS64="-q64 -Wl,-b64"
   OBJECT_MODE="64"
  else
   OBJECT_MODE="32"
  fi
  OPTIMFLAGS="-O2"
- if test "$DEBUGINF" = 1; then
+ if test x"$enable_debuginfo" = xyes; then
   DEBUGFLAGS="-g"
  fi
  ;;
 
 aCC*)
  CPPCMNTFLAGS=
- if test "$BIT64" = 1; then
+ if test x"$enable_64bit" = xyes; then
   CCFLAGS64="+DD64"
  fi
  OPTIMFLAGS="-O"
@@ -85,9 +87,13 @@ aCC*)
 
 gcc*)
  CPPCMNTFLAGS=
- CCFLAGS64=
+ if test x"$enable_64bit" = xyes; then
+  CCFLAGS64="-m64"
+ else
+  CCFLAGS64="-m32"
+ fi
  OPTIMFLAGS="-O2"
- if test $DEBUGINF = 1; then
+ if test x"$enable_debuginfo" = xyes; then
   DEBUGFLAGS="-g"
  fi
  ;;
@@ -97,11 +103,11 @@ gcc*)
 case $host in
 sparc*-*solaris*)
  CPPCMNTFLAGS=
- if test "$BIT64" = 1; then
+ if test x"$enable_64bit" = xyes; then
   CCFLAGS64="-fast -xtarget=ultra4 -xarch=v9a"
  fi
  OPTIMFLAGS="-O"
- if test $DEBUGINF = 1; then
+ if test x"$enable_debuginfo" = xyes; then
   DEBUGFLAGS='-g'
  fi
  ;;
@@ -110,7 +116,7 @@ sparc*-*solaris*)
  CPPCMNTFLAGS=
  CCFLAGS64=
  OPTIMFLAGS="-O"
- if test $DEBUGINF = 1; then
+ if test x"$enable_debuginfo" = xyes; then
   DEBUGFLAGS='-g'
  fi
  ;;
@@ -123,7 +129,8 @@ CFLAGS="$CCFLAGS64 $CPPCMNTFLAGS $OPTIMFLAGS $DEBUGFLAGS"
 AC_MSG_RESULT([$CFLAGS])
 AC_SUBST([OBJECT_MODE])
 
-
+AS_IF([test "x$enable_antlrdebug" = xno], [AC_DEFINE([ANTLR3_NODEBUGGER], [1], [Define if ANTLR debugger not required])], [])
+AS_IF([test x"$enable_64bit" = xyes], [AC_DEFINE([ANTLR3_USE_64BIT], [1], [Define if 64 bit mode required])], [])
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -133,7 +140,47 @@ AC_PROG_MAKE_SET
 
 # Checks for header files.
 AC_INCLUDES_DEFAULT()
-AC_CHECK_HEADERS([malloc.h sys/malloc.h stdarg.h sys/stat.h ctype.h])
+AC_HEADER_RESOLV
+AC_CHECK_HEADERS([sys/malloc.h malloc.h], [], [],
+[[#ifdef HAVE_SYS_MALLOC_H
+#include <sys/malloc.h>
+#endif
+#ifdef HAVE_MALLOC_H
+#include <malloc.h>
+#endif
+]])
+AC_CHECK_HEADERS([stdarg.h], [], [],
+[[#ifdef HAVE_STDARG_H
+#include <stdarg.h>
+#endif
+]])
+
+AC_CHECK_HEADERS([sys/stat.h], [], [],
+[[#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+]])
+
+AC_CHECK_HEADERS([ctype.h], [], [],
+[[#ifdef HAVE_CTYPE_H
+#include <ctype.h>
+#endif
+]])
+
+AC_CHECK_HEADERS([netinet/tcp.h], [], [],
+[[#ifdef HAVE_NETINET_TCP_H
+#include <netinet/tcp.h>
+#endif
+]])
+
+AC_CHECK_HEADERS([sys/socket.h socket.h], [], [],
+[[#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+#ifdef HAVE_SOCKET_H
+#include <socket.h>
+#endif
+]])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -152,7 +199,7 @@ AC_C_INLINE
 
 
 # Checks for library functions.
-AC_CHECK_FUNCS([memmove memset strdup])
+AC_CHECK_FUNCS([memmove memset strdup accept])
 
 AC_CONFIG_HEADERS(antlr3config.h)
 AC_CONFIG_FILES([Makefile])

@@ -28,92 +28,92 @@
 ANTLR3_API pANTLR3_INPUT_STREAM
 antlr3AsciiFileStreamNew(pANTLR3_UINT8 fileName)
 {
-    /* Pointer to the input stream we are going to create
-     */
-    pANTLR3_INPUT_STREAM    input;
-    ANTLR3_UINT64	    status;
+	// Pointer to the input stream we are going to create
+	//
+	pANTLR3_INPUT_STREAM    input;
+	ANTLR3_UINT32	    status;
 
-    if	(fileName == NULL)
-    {
-	(pANTLR3_INPUT_STREAM) ANTLR3_FUNC_PTR(ANTLR3_ERR_NOFILE);
-    }
+	if	(fileName == NULL)
+	{
+		return NULL;
+	}
 
-    /* Allocate memory for the input stream structure
-     */
-    input   = (pANTLR3_INPUT_STREAM)
-		    ANTLR3_MALLOC(sizeof(ANTLR3_INPUT_STREAM));
+	// Allocate memory for the input stream structure
+	//
+	input   = (pANTLR3_INPUT_STREAM)
+		ANTLR3_CALLOC(1, sizeof(ANTLR3_INPUT_STREAM));
 
-    if	(input == NULL)
-    {
-	return	(pANTLR3_INPUT_STREAM) ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM);
-    }
+	if	(input == NULL)
+	{
+		return	NULL;
+	}
 
-    /* Structure was allocated correctly, now we can read the file.
-     */
-    status  = antlr3readAscii(input, fileName);
+	// Structure was allocated correctly, now we can read the file.
+	//
+	status  = antlr3readAscii(input, fileName);
 
-    /* Call the common 8 bit ASCII input stream handler
-     * Initializer type thingy doobry function.
-     */
-    antlr3AsciiSetupStream(input, ANTLR3_CHARSTREAM);
+	// Call the common 8 bit ASCII input stream handler
+	// Initializer type thingy doobry function.
+	//
+	antlr3AsciiSetupStream(input, ANTLR3_CHARSTREAM);
 
-    /* Now we can set up the file name
-     */
-    input->fileName = input->strFactory->newStr(input->strFactory, fileName);
-    
-    if	(status != ANTLR3_SUCCESS)
-    {
-	ANTLR3_FREE(input);
+	// Now we can set up the file name
+	//	
+	input->istream->streamName	= input->strFactory->newStr(input->strFactory, fileName);
+	input->fileName				= input->istream->streamName;
 
-	return	ANTLR3_FUNC_PTR(status);
-    }
+	if	(status != ANTLR3_SUCCESS)
+	{
+		input->close(input);
+		return	NULL;
+	}
 
-    return  input;
+	return  input;
 }
 
-ANTLR3_API ANTLR3_UINT64
+ANTLR3_API ANTLR3_UINT32
 antlr3readAscii(pANTLR3_INPUT_STREAM    input, pANTLR3_UINT8 fileName)
 {
-    ANTLR3_FDSC		    infile;
-    ANTLR3_UINT64	    fSize;
+	ANTLR3_FDSC		    infile;
+	ANTLR3_UINT32	    fSize;
 
-    /* Open the OS file in read binary mode
-     */
-    infile  = antlr3Fopen(fileName, "rb");
+	/* Open the OS file in read binary mode
+	*/
+	infile  = antlr3Fopen(fileName, "rb");
 
-    /* Check that it was there
-     */
-    if	(infile == NULL)
-    {
-	return	(ANTLR3_UINT64)ANTLR3_ERR_NOFILE;
-    }
+	/* Check that it was there
+	*/
+	if	(infile == NULL)
+	{
+		return	(ANTLR3_UINT32)ANTLR3_ERR_NOFILE;
+	}
 
-    /* It was there, so we can read the bytes now
-     */
-    fSize   = antlr3Fsize(fileName);	/* Size of input file	*/
+	/* It was there, so we can read the bytes now
+	*/
+	fSize   = antlr3Fsize(fileName);	/* Size of input file	*/
 
-    /* Allocate buffer for this input set   
-     */
-    input->data	    = ANTLR3_MALLOC((size_t)fSize);
-    input->sizeBuf  = fSize;
+	/* Allocate buffer for this input set   
+	*/
+	input->data	    = ANTLR3_MALLOC((size_t)fSize);
+	input->sizeBuf  = fSize;
 
-    if	(input->data == NULL)
-    {
-	return	(ANTLR3_UINT64)ANTLR3_ERR_NOMEM;
-    }
-    
-    input->isAllocated	= ANTLR3_TRUE;
+	if	(input->data == NULL)
+	{
+		return	(ANTLR3_UINT32)ANTLR3_ERR_NOMEM;
+	}
 
-    /* Now we read the file. Characters are not converted to
-     * the internal ANTLR encoding until they are read from the buffer
-     */
-    antlr3Fread(infile, fSize, input->data);
+	input->isAllocated	= ANTLR3_TRUE;
 
-    /* And close the file handle
-     */
-    antlr3Fclose(infile);
+	/* Now we read the file. Characters are not converted to
+	* the internal ANTLR encoding until they are read from the buffer
+	*/
+	antlr3Fread(infile, fSize, input->data);
 
-    return  ANTLR3_SUCCESS;
+	/* And close the file handle
+	*/
+	antlr3Fclose(infile);
+
+	return  ANTLR3_SUCCESS;
 }
 
 /** \brief Open an operating system file and return the descriptor
@@ -136,18 +136,18 @@ antlr3Fclose(ANTLR3_FDSC fd)
 {
     fclose(fd);
 }
-ANTLR3_API ANTLR3_UINT64
+ANTLR3_API ANTLR3_UINT32
 antlr3Fsize(pANTLR3_UINT8 fileName)
 {   
     struct _stat	statbuf;
 
     _stat((const char *)fileName, &statbuf);
 
-    return (ANTLR3_UINT64)statbuf.st_size;
+    return (ANTLR3_UINT32)statbuf.st_size;
 }
 
-ANTLR3_API ANTLR3_UINT64
-antlr3Fread(ANTLR3_FDSC fdsc, ANTLR3_UINT64 count,  void * data)
+ANTLR3_API ANTLR3_UINT32
+antlr3Fread(ANTLR3_FDSC fdsc, ANTLR3_UINT32 count,  void * data)
 {
-    return  (ANTLR3_UINT64)fread(data, (size_t)count, 1, fdsc);
+    return  (ANTLR3_UINT32)fread(data, (size_t)count, 1, fdsc);
 }

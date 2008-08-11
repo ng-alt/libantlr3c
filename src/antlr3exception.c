@@ -41,33 +41,33 @@ static    void	antlr3ExceptionFree (pANTLR3_EXCEPTION ex);
 pANTLR3_EXCEPTION
 antlr3ExceptionNew(ANTLR3_UINT32 exception, void * name, void * message, ANTLR3_BOOLEAN freeMessage)
 {
-    pANTLR3_EXCEPTION	ex;
+	pANTLR3_EXCEPTION	ex;
 
-    /* Allocate memory for the structure
-     */
-    ex	= (pANTLR3_EXCEPTION) ANTLR3_MALLOC(sizeof(ANTLR3_EXCEPTION));
+	/* Allocate memory for the structure
+	*/
+	ex	= (pANTLR3_EXCEPTION) ANTLR3_CALLOC(1, sizeof(ANTLR3_EXCEPTION));
 
-    /* Check for memory allocation
-     */
-    if	(ex == NULL)
-    {
-	return	(pANTLR3_EXCEPTION)ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM);
-    }
+	/* Check for memory allocation
+	*/
+	if	(ex == NULL)
+	{
+		return	NULL;
+	}
 
-    ex->name		= name;		/* Install exception name	*/
-    ex->type		= exception;	/* Install the exception number	*/
-    ex->message		= message;	/* Install message string	*/
-    
-    /* Indicate whether the string should be freed if exception is destroyed    
-     */
-    ex->freeMessage	= freeMessage;
+	ex->name		= name;		/* Install exception name	*/
+	ex->type		= exception;	/* Install the exception number	*/
+	ex->message		= message;	/* Install message string	*/
 
-    /* Install the API
-     */
-    ex->print	    =  antlr3ExceptionPrint;
-    ex->freeEx	    =  antlr3ExceptionFree;
+	/* Indicate whether the string should be freed if exception is destroyed    
+	*/
+	ex->freeMessage	= freeMessage;
 
-    return ex;
+	/* Install the API
+	*/
+	ex->print	    =  antlr3ExceptionPrint;
+	ex->freeEx	    =  antlr3ExceptionFree;
+
+	return ex;
 }
 
 /**
@@ -75,7 +75,7 @@ antlr3ExceptionNew(ANTLR3_UINT32 exception, void * name, void * message, ANTLR3_
  * Prints out the message in all the exceptions in the supplied chain.
  * 
  * \param[in] ex
- * Pointer to the excpetion structure to print.
+ * Pointer to the exception structure to print.
  * 
  * \remarks
  * You may wish to override this function by installing a pointer to a new function
@@ -95,11 +95,11 @@ antlr3ExceptionPrint(pANTLR3_EXCEPTION ex)
 	 */
 	if  (ex->message == NULL)
 	{
-	    printf("ANTLR3_EXCEPTION number %d (%08X).\n", ex->type, ex->type);
+	    ANTLR3_FPRINTF(stderr, "ANTLR3_EXCEPTION number %d (%08X).\n", ex->type, ex->type);
 	}
 	else
 	{
-	    printf("ANTLR3_EXCEPTION: %s\n", (char *)(ex->message));
+	    ANTLR3_FPRINTF(stderr, "ANTLR3_EXCEPTION: %s\n", (char *)(ex->message));
 	}
 
 	/* Move to next in the chain (if any)

@@ -1,6 +1,18 @@
 /* antlr3config.h.  Generated from antlr3config.h.in by configure.  */
 /* antlr3config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Define if ANTLR debugger not required */
+/* #undef ANTLR3_NODEBUGGER */
+
+/* Define if 64 bit mode required */
+#define ANTLR3_USE_64BIT 1
+
+/* Define to 1 if you have the `accept' function. */
+#define HAVE_ACCEPT 1
+
+/* Define to 1 if you have the <arpa/nameser.h> header file. */
+#define HAVE_ARPA_NAMESER_H 1
+
 /* Define to 1 if you have the <ctype.h> header file. */
 #define HAVE_CTYPE_H 1
 
@@ -25,6 +37,21 @@
 /* Define to 1 if you have the `memset' function. */
 #define HAVE_MEMSET 1
 
+/* Define to 1 if you have the <netdb.h> header file. */
+#define HAVE_NETDB_H 1
+
+/* Define to 1 if you have the <netinet/in.h> header file. */
+#define HAVE_NETINET_IN_H 1
+
+/* Define to 1 if you have the <netinet/tcp.h> header file. */
+#define HAVE_NETINET_TCP_H 1
+
+/* Define to 1 if you have the <resolv.h> header file. */
+#define HAVE_RESOLV_H 1
+
+/* Define to 1 if you have the <socket.h> header file. */
+/* #undef HAVE_SOCKET_H */
+
 /* Define to 1 if you have the <stdarg.h> header file. */
 #define HAVE_STDARG_H 1
 
@@ -45,6 +72,9 @@
 
 /* Define to 1 if you have the <sys/malloc.h> header file. */
 /* #undef HAVE_SYS_MALLOC_H */
+
+/* Define to 1 if you have the <sys/socket.h> header file. */
+#define HAVE_SYS_SOCKET_H 1
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1
@@ -68,19 +98,19 @@
 #define PACKAGE_NAME "libantlr3c"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "libantlr3c 3.0.1"
+#define PACKAGE_STRING "libantlr3c 3.1"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libantlr3c"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "3.0.1"
+#define PACKAGE_VERSION "3.1"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
 /* Version number of package */
-#define VERSION "3.0.1"
+#define VERSION "3.1"
 
 /* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
    <pthread.h>, or <semaphore.h> is not used. If the typedef was allowed, the

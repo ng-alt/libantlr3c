@@ -56,15 +56,33 @@
 #define	ANTLR3_MISMATCHED_TREE_NODE_EXCEPTION	7
 #define	ANTLR3_MISMATCHED_TREE_NODE_NAME    "Mismatched tree node!"
 
-#define	ANTLR3_REWRITE_EARLY_EXCEPTION	7
+#define	ANTLR3_REWRITE_EARLY_EXCEPTION	8
 #define	ANTLR3_REWRITE_EARLY_EXCEPTION_NAME    "Mismatched tree node!"
+
+#define	ANTLR3_UNWANTED_TOKEN_EXCEPTION	9
+#define	ANTLR3_UNWANTED_TOKEN_EXCEPTION_NAME    "Extraneous token"
+
+#define	ANTLR3_MISSING_TOKEN_EXCEPTION	10
+#define	ANTLR3_MISSING_TOKEN_EXCEPTION_NAME    "Missing token"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Base structure for an ANTLR3 exception tracker
  */
 typedef	struct ANTLR3_EXCEPTION_struct
 {
-    /** Set to one of the exception type #defines above.
-     */
+	/// Set to one of the exception type defines:
+	///
+	///  - #ANTLR3_RECOGNITION_EXCEPTION
+	///  - #ANTLR3_MISMATCHED_TOKEN_EXCEPTION
+	///  - #ANTLR3_NO_VIABLE_ALT_EXCEPTION
+	///  - #ANTLR3_MISMATCHED_SET_EXCEPTION
+	///  - #ANTLR3_EARLY_EXIT_EXCEPTION
+	///  - #ANTLR3_FAILED_PREDICATE_EXCEPTION
+	///  - #ANTLR3_EARLY_EXIT_EXCEPTION
+    ///
     ANTLR3_UINT32   type;
 
     /** The string name of the exception
@@ -92,7 +110,7 @@ typedef	struct ANTLR3_EXCEPTION_struct
     /** Indicates the index of the 'token' we were looking at when the
      *  exception occurred.
      */
-    ANTLR3_UINT64   index;
+    ANTLR3_MARKER  index;
 
     /** Indicates what the current token/tree was when the error occurred. Since not
      *  all input streams will be able to retrieve the nth token, we track it here
@@ -105,10 +123,10 @@ typedef	struct ANTLR3_EXCEPTION_struct
     ANTLR3_UINT32   expecting;
 
     /** Indicates a set of tokens that we were expecting to see one of when the
-     *  error occurred. It is a following bitset, so you can use ->toIntList() on it
-     *  to generate an array of integers that it represents.
+     *  error occurred. It is a following bitset list, so you can use load it and use ->toIntList() on it
+     *  to generate an array of integer tokens that it represents.
      */
-    pANTLR3_BITSET  expectingSet;
+    pANTLR3_BITSET_LIST  expectingSet;
 
     /** If this is a tree parser exception then the node is set to point to the node
      * that caused the issue.
@@ -123,7 +141,7 @@ typedef	struct ANTLR3_EXCEPTION_struct
      *  generated from a lexer.  We need to track this since the
      *  unexpected char doesn't carry the line info.
      */
-    ANTLR3_UINT64   line;
+    ANTLR3_UINT32   line;
 
     /** Character position in the line where the error occurred.
      */
@@ -163,6 +181,9 @@ typedef	struct ANTLR3_EXCEPTION_struct
 }
     ANTLR3_EXCEPTION;
 
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

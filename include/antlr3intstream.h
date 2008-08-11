@@ -1,7 +1,7 @@
 /** \file
  * Defines the the class interface for an antlr3 INTSTREAM.
  * 
- * Certain funcitonality (such as DFAs for instance) abstract the stream of tokens
+ * Certain functionality (such as DFAs for instance) abstract the stream of tokens
  * or characters in to a steam of integers. Hence this structure should be included
  * in any stream that is able to provide the output as a stream of integers (which is anything
  * basically.
@@ -57,6 +57,10 @@
  */
 #define	ANTLR3_INPUT_MASK	0x0007
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef	struct ANTLR3_INT_STREAM_struct
 {
     /** Input stream type indicator. Sometimes useful for error reporting etc.
@@ -77,7 +81,11 @@ typedef	struct ANTLR3_INT_STREAM_struct
 
     /** Last marker position allocated
      */
-    ANTLR3_UINT64	    lastMarker;
+    ANTLR3_MARKER	    lastMarker;
+
+	// Return a string that identifies the input source
+	//
+	pANTLR3_STRING		(*getSourceName)	(struct ANTLR3_INT_STREAM_struct * intStream);
 
     /** Consume the next 'ANTR3_UINT32' in the stream
      */
@@ -85,19 +93,19 @@ typedef	struct ANTLR3_INT_STREAM_struct
 
     /** Get ANTLR3_UINT32 at current input pointer + i ahead where i=1 is next ANTLR3_UINT32 
      */
-    ANTLR3_UINT32	    (*_LA)	    (struct ANTLR3_INT_STREAM_struct * intStream, ANTLR3_INT64 i);
+    ANTLR3_UINT32	    (*_LA)	    (struct ANTLR3_INT_STREAM_struct * intStream, ANTLR3_INT32 i);
 
     /** Tell the stream to start buffering if it hasn't already.  Return
      *  current input position, index(), or some other marker so that
      *  when passed to rewind() you get back to the same spot.
      *  rewind(mark()) should not affect the input cursor.
      */
-    ANTLR3_UINT64	    (*mark)	    (struct ANTLR3_INT_STREAM_struct * intStream);
+    ANTLR3_MARKER	    (*mark)	    (struct ANTLR3_INT_STREAM_struct * intStream);
     
     /** Return the current input symbol index 0..n where n indicates the
      *  last symbol has been read.
      */
-    ANTLR3_INT64	    (*index)	    (struct ANTLR3_INT_STREAM_struct * intStream);
+    ANTLR3_MARKER	    (*index)	    (struct ANTLR3_INT_STREAM_struct * intStream);
 
     /** Reset the stream so that next call to index would return marker.
      *  The marker will usually be index() but it doesn't have to be.  It's
@@ -107,7 +115,7 @@ typedef	struct ANTLR3_INT_STREAM_struct
      *  like a stack.  Assume the state the stream was in when this marker
      *  was created.
      */
-    void		    (*rewind)	    (struct ANTLR3_INT_STREAM_struct * intStream, ANTLR3_UINT64 marker);
+    void		    (*rewind)	    (struct ANTLR3_INT_STREAM_struct * intStream, ANTLR3_MARKER marker);
 
     /** Reset the stream to the last marker position, witouh destryoing the
      *  last marker position.
@@ -119,7 +127,7 @@ typedef	struct ANTLR3_INT_STREAM_struct
      *  no longer necessary.  This will have the same behavior as
      *  rewind() except it releases resources without the backward seek.
      */
-    void		    (*release)	    (struct ANTLR3_INT_STREAM_struct * intStream, ANTLR3_UINT64 mark);
+    void		    (*release)	    (struct ANTLR3_INT_STREAM_struct * intStream, ANTLR3_MARKER mark);
 
     /** Set the input cursor to the position indicated by index.  This is
      *  normally used to seek ahead in the input stream.  No buffering is
@@ -137,18 +145,18 @@ typedef	struct ANTLR3_INT_STREAM_struct
      *  Currently, this method is only used for efficient backtracking, but
      *  in the future it may be used for incremental parsing.
      */
-    void		    (*seek)	    (struct ANTLR3_INT_STREAM_struct * intStream, ANTLR3_UINT64 index);
+    void		    (*seek)	    (struct ANTLR3_INT_STREAM_struct * intStream, ANTLR3_MARKER index);
 
     /** Only makes sense for streams that buffer everything up probably, but
      *  might be useful to display the entire stream or for testing.
      */
-    ANTLR3_UINT64	    (*size)	    (struct ANTLR3_INT_STREAM_struct * intStream);
+    ANTLR3_UINT32	    (*size)	    (struct ANTLR3_INT_STREAM_struct * intStream);
 
     /** Because the indirect call, though small in individual cases can
      *  mount up if there are thousands of tokens (very large input streams), callers
      *  of size can optionally use this cached size field.
      */
-    ANTLR3_UINT64	    cachedSize;
+    ANTLR3_UINT32	    cachedSize;
 
     /** Frees any resources that were allocated for the implementation of this
      *  interface. Usually this is just releasing the memory allocated
@@ -159,6 +167,10 @@ typedef	struct ANTLR3_INT_STREAM_struct
 
 }
     ANTLR3_INT_STREAM;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

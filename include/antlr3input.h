@@ -14,9 +14,13 @@
 #include    <antlr3commontoken.h>
 #include    <antlr3intstream.h>
 
-/** \brief Master context structure for an ANTLR3
- *   C runtime based input stream.
- */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/// Master context structure for an ANTLR3 C runtime based input stream.
+/// \ingroup apistructures
+///
 typedef	struct	ANTLR3_INPUT_STREAM_struct
 {
     /** Interfaces that provide streams must all provide
@@ -30,6 +34,15 @@ typedef	struct	ANTLR3_INPUT_STREAM_struct
      *  are called back from this interface.
      */
     void	      * super;
+
+	/// Indicates the size, in 8 bit units, of a single character. Note that
+	/// the C runtime does not deal with surrogates and UTF8 directly as this would be
+	/// slow and complicated. Variable character width inputs are expected to be converted
+	/// into fixed width formats, so that would be a UTF32 format for anything that cannot
+	/// work with a UCS2 encoding, such as UTF-8. Generally you are best
+	/// working internally with 32 bit characters.
+	///
+	ANTLR3_UINT8	charByteSize;
 
     /** Pointer the start of the input string, characters may be
      *  taken as offsets from here and in original input format encoding.
@@ -58,12 +71,12 @@ typedef	struct	ANTLR3_INPUT_STREAM_struct
      *  input source is a stream such as a socket or something then we may
      *  call special read code to wait for more input.
      */
-    ANTLR3_UINT64	sizeBuf;
+    ANTLR3_UINT32	sizeBuf;
 
     /** The line number we are traversing in the input file. This gets incremented
      *  by a newline() call in the lexer grammar actions.
      */
-    ANTLR3_UINT64	line;
+    ANTLR3_UINT32	line;
 
     /** Pointer into the input buffer where the current line
      *  started.
@@ -76,7 +89,7 @@ typedef	struct	ANTLR3_INPUT_STREAM_struct
 
     /** Tracks how deep mark() calls are nested
      */
-    ANTLR3_UINT64	markDepth;
+    ANTLR3_UINT32	markDepth;
 
     /** List of mark() points in the input stream
      */
@@ -102,6 +115,7 @@ typedef	struct	ANTLR3_INPUT_STREAM_struct
    /** Pointer to function that closes the input stream
      */
     void		(*close)	(struct	ANTLR3_INPUT_STREAM_struct * input);
+    void		(*free)		(struct	ANTLR3_INPUT_STREAM_struct * input);
 
     /** Pointer to function that resets the input stream
      */
@@ -119,23 +133,23 @@ typedef	struct	ANTLR3_INPUT_STREAM_struct
      *  offset from nextChar. Same as _LA for char stream, but token
      *  streams etc. have one of these that does other stuff of course.
      */
-    void *		(*_LT)		(struct	ANTLR3_INPUT_STREAM_struct * input, ANTLR3_INT64 lt);
+    void *		(*_LT)		(struct	ANTLR3_INPUT_STREAM_struct * input, ANTLR3_INT32 lt);
 
     /** Pointer to function to return the total size of the input buffer. For streams
      *  this may be just the total we have available so far. This means of course that
      *  the input stream must be careful to accumulate enough input so that any backtracking
      *  can be satisfied.
      */
-    ANTLR3_UINT64	(*size)		(struct ANTLR3_INPUT_STREAM_struct * input);
+    ANTLR3_UINT32	(*size)		(struct ANTLR3_INPUT_STREAM_struct * input);
 
     /** Pointer to function to return a substring of the input stream. String is returned in allocated
      *  memory and is in same encoding as the input stream itself, NOT internal ANTLR3_UCHAR form.
      */
-    pANTLR3_STRING	(*substr)	(struct ANTLR3_INPUT_STREAM_struct * input, ANTLR3_INT64 start, ANTLR3_INT64 stop);
+    pANTLR3_STRING	(*substr)	(struct ANTLR3_INPUT_STREAM_struct * input, ANTLR3_MARKER start, ANTLR3_MARKER stop);
 
-    /** Pointer to function to return the current line number in the innput stream
+    /** Pointer to function to return the current line number in the input stream
      */
-    ANTLR3_UINT64	(*getLine)	(struct ANTLR3_INPUT_STREAM_struct * input);
+    ANTLR3_UINT32	(*getLine)	(struct ANTLR3_INPUT_STREAM_struct * input);
 
     /** Pointer to function to return the current line buffer in the input stream
      *  The pointer returned is directly into the input stream so you must copy
@@ -200,7 +214,7 @@ typedef	struct	ANTLR3_LEX_STATE_struct
     /** The line number we are traversing in the input file. This gets incremented
      *  by a newline() call in the lexer grammer actions.
      */
-    ANTLR3_UINT64	line;
+    ANTLR3_UINT32	line;
 
     /** Pointer into the input buffer where the current line
      *  started.
@@ -219,5 +233,9 @@ typedef	struct	ANTLR3_LEX_STATE_struct
     void	    antlr3AsciiSetupStream	(pANTLR3_INPUT_STREAM input, ANTLR3_UINT32 type);
     void	    antlr3UCS2SetupStream	(pANTLR3_INPUT_STREAM input, ANTLR3_UINT32 type);
     void	    antlr3GenericSetupStream	(pANTLR3_INPUT_STREAM input, ANTLR3_UINT32 type);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* _ANTLR3_INPUT_H  */

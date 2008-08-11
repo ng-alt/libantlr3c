@@ -1,7 +1,7 @@
 /** \file
  * Simple string interface allows indiscriminate allocation of strings
  * such that they can be allocated all over the place and released in 
- * one chunk via a string factory - saves lots of hassle in remmebering what
+ * one chunk via a string factory - saves lots of hassle in remembering what
  * strings were allocated where.
  */
 #ifndef	_ANTLR3_STRING_H
@@ -9,6 +9,10 @@
 
 #include    <antlr3defs.h>
 #include    <antlr3collections.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Base string class tracks the allocations and provides simple string
  *  tracking functions. Mostly you can work directly on the string for things
@@ -23,13 +27,13 @@ typedef	struct ANTLR3_STRING_struct
     pANTLR3_STRING_FACTORY	factory;
 
     /** Pointer to the current string value (starts at NULL unless
-     *  the string allocator is told to create it with a preknown size.
+     *  the string allocator is told to create it with a pre known size.
      */
     pANTLR3_UINT8		chars;
 
     /** Current length of the string up to and not including, the trailing '\0'
      *  Note that the actual allocation (->size)
-     *  is always at least one byte more than this to accomodate trailing '\0'
+     *  is always at least one byte more than this to accommodate trailing '\0'
      */
     ANTLR3_UINT32		len;
 
@@ -38,7 +42,7 @@ typedef	struct ANTLR3_STRING_struct
     ANTLR3_UINT32		size;
 
     /** Index of string (allocation number) in case someone wants
-     *  to explictly release it.
+     *  to explicitly release it.
      */
     ANTLR3_UINT32		index;
 
@@ -141,15 +145,15 @@ typedef	struct ANTLR3_STRING_struct
     ANTLR3_UCHAR    (*charAt)	(struct ANTLR3_STRING_struct * string, ANTLR3_UINT32 offset);
 
     /** Pointer to a function that returns a substring of the supplied string a la .subString(s,e)
-     *  in java runtimes.
+     *  in the Java language.
      */
     struct ANTLR3_STRING_struct *
-		    (*subString)    (struct ANTLR3_STRING_struct * string, ANTLR3_UINT32 startIndex, ANTLR3_UINT32 endIndex);
+					(*subString)    (struct ANTLR3_STRING_struct * string, ANTLR3_UINT32 startIndex, ANTLR3_UINT32 endIndex);
 
     /** Pointer to a function that returns the integer representation of any numeric characters
      *  at the beginning of the string
      */
-    ANTLR3_INT32   (*toInt32)	    (struct ANTLR3_STRING_struct * string);
+    ANTLR3_INT32	(*toInt32)	    (struct ANTLR3_STRING_struct * string);
 
     /** Pointer to a function that yields an 8 bit string regardless of the encoding of the supplied
      *  string. This is useful when you want to use the text of a token in some way that requires an 8 bit
@@ -158,7 +162,16 @@ typedef	struct ANTLR3_STRING_struct
      *  with some arbitrary character such as '?'
      */
     struct ANTLR3_STRING_struct *
-		    (*to8)	    (struct ANTLR3_STRING_struct * string);
+					(*to8)	    (struct ANTLR3_STRING_struct * string);
+
+	/// Pointer to a function that yields a UT8 encoded string of the current string,
+	/// regardless of the current encoding of the string. Because there is currently no UTF8
+	/// handling in the string class, it creates therefore, a string that is useful only for read only 
+	/// applications as it will not contain methods that deal with UTF8 at the moment.
+	///
+	struct ANTLR3_STRING_struct *
+					(*toUTF8)	(struct ANTLR3_STRING_struct * string);
+	
 }
     ANTLR3_STRING;
 
@@ -222,6 +235,10 @@ typedef struct	ANTLR3_STRING_FACTORY_struct
 
 }
     ANTLR3_STRING_FACTORY;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

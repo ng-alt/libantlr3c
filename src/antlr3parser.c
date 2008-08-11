@@ -5,12 +5,30 @@
 
 /* Parser API 
  */
-static void			setTokenStream		    (pANTLR3_PARSER parser, pANTLR3_TOKEN_STREAM);
-static pANTLR3_TOKEN_STREAM	getTokenStream		    (pANTLR3_PARSER parser);
-static void			freeParser		    (pANTLR3_PARSER parser);
+static void					setDebugListener	(pANTLR3_PARSER parser, pANTLR3_DEBUG_EVENT_LISTENER dbg);
+static void					setTokenStream		(pANTLR3_PARSER parser, pANTLR3_TOKEN_STREAM);
+static pANTLR3_TOKEN_STREAM	getTokenStream		(pANTLR3_PARSER parser);
+static void					freeParser		    (pANTLR3_PARSER parser);
 
 ANTLR3_API pANTLR3_PARSER
-antlr3ParserNew		(ANTLR3_UINT32 sizeHint)
+antlr3ParserNewStreamDbg		(ANTLR3_UINT32 sizeHint, pANTLR3_TOKEN_STREAM tstream, pANTLR3_DEBUG_EVENT_LISTENER dbg, pANTLR3_RECOGNIZER_SHARED_STATE state)
+{
+	pANTLR3_PARSER	parser;
+
+	parser = antlr3ParserNewStream(sizeHint, tstream, state);
+
+	if	(parser == NULL)
+    {
+		return	NULL;
+    }
+
+	parser->setDebugListener(parser, dbg);
+
+	return parser;
+}
+
+ANTLR3_API pANTLR3_PARSER
+antlr3ParserNew		(ANTLR3_UINT32 sizeHint, pANTLR3_RECOGNIZER_SHARED_STATE state)
 {
     pANTLR3_PARSER	parser;
 
@@ -20,17 +38,17 @@ antlr3ParserNew		(ANTLR3_UINT32 sizeHint)
 
     if	(parser == NULL)
     {
-	return	(pANTLR3_PARSER) ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM);
+		return	NULL;
     }
 
     /* Install a base parser
      */
-    parser->rec =  antlr3BaseRecognizerNew(ANTLR3_TYPE_PARSER, sizeHint);
+    parser->rec =  antlr3BaseRecognizerNew(ANTLR3_TYPE_PARSER, sizeHint, state);
 
-    if	(parser->rec == (pANTLR3_BASE_RECOGNIZER) ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM))
+    if	(parser->rec == NULL)
     {
-	parser->free(parser);
-	return	(pANTLR3_PARSER) ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM);
+		parser->free(parser);
+		return	NULL;
     }
 
     parser->rec->super	= parser;
@@ -41,23 +59,25 @@ antlr3ParserNew		(ANTLR3_UINT32 sizeHint)
 
     /* Install the API
      */
+	parser->setDebugListener	=  setDebugListener;
     parser->setTokenStream		=  setTokenStream;
     parser->getTokenStream		=  getTokenStream;
+
     parser->free			=  freeParser;
 
     return parser;
 }
 
 ANTLR3_API pANTLR3_PARSER
-antlr3ParserNewStream	(ANTLR3_UINT32 sizeHint, pANTLR3_TOKEN_STREAM tstream)
+antlr3ParserNewStream	(ANTLR3_UINT32 sizeHint, pANTLR3_TOKEN_STREAM tstream, pANTLR3_RECOGNIZER_SHARED_STATE state)
 {
     pANTLR3_PARSER	parser;
 
-    parser  = antlr3ParserNew(sizeHint);
+    parser  = antlr3ParserNew(sizeHint, state);
 
-    if	(parser == (pANTLR3_PARSER) ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM))
+    if	(parser == NULL)
     {
-	return	(pANTLR3_PARSER) ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM);
+		return	NULL;
     }
 
     /* Everything seems to be hunky dory so we can install the 
@@ -73,16 +93,46 @@ freeParser			    (pANTLR3_PARSER parser)
 {
     if	(parser->rec != NULL)
     {
-	    if	(parser->rec->following != NULL)
-	    {
-		parser->rec->following->free(parser->rec->following);
-		parser->rec->following = NULL;
-	    }
+		// This may have ben a delegate or delegator parser, in which case the
+		// state may already have been freed (and set to NULL therefore)
+		// so we ignore the state if we don't have it.
+		//
+		if	(parser->rec->state != NULL)
+		{
+			if	(parser->rec->state->following != NULL)
+			{
+				parser->rec->state->following->free(parser->rec->state->following);
+				parser->rec->state->following = NULL;
+			}
+		}
 	    parser->rec->free(parser->rec);
 	    parser->rec	= NULL;
 
     }
     ANTLR3_FREE(parser);
+}
+
+static void					
+setDebugListener		(pANTLR3_PARSER parser, pANTLR3_DEBUG_EVENT_LISTENER dbg)
+{
+	// Set the debug listener. There are no methods to override
+	// because currently the only ones that notify the debugger
+	// are error reporting and recovery. Hence we can afford to
+	// check and see if the debugger interface is null or not
+	// there. If there is ever an occasion for a performance
+	// sensitive function to use the debugger interface, then
+	// a replacement function for debug mode should be supplied
+	// and installed here.
+	//
+	parser->rec->debugger	= dbg;
+
+	// If there was a tokenstream installed already
+	// then we need to tell it about the debug interface
+	//
+	if	(parser->tstream != NULL)
+	{
+		parser->tstream->setDebugListener(parser->tstream, dbg);
+	}
 }
 
 static void			

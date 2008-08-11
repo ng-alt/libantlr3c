@@ -12,6 +12,11 @@
 #include    <antlr3input.h>
 #include    <antlr3commontoken.h>
 #include    <antlr3bitset.h>
+#include	<antlr3debugeventlistener.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Definition of a token source, which has a pointer to a function that 
  *  returns the next token (using a token factory if it is going to be
@@ -36,6 +41,13 @@ typedef struct ANTLR3_TOKEN_SOURCE_struct
      *  attempted to be freed.
      */
     ANTLR3_COMMON_TOKEN	    eofToken;
+
+	/// A special pre-allocated token, which is returned by mTokens() if the
+	/// lexer rule said to just skip the generated token altogether.
+	/// Having this single token stops us wasting memory by have the token factory
+	/// actually create something that we are going to SKIP(); anyway.
+	///
+	ANTLR3_COMMON_TOKEN		skipToken;
 
     /** Whatever is supplying the token source interface, needs a pointer to 
      *  itself so that this pointer can be passed to it when the nextToken
@@ -72,13 +84,21 @@ typedef	struct ANTLR3_TOKEN_STREAM_struct
      */
     pANTLR3_INT_STREAM	    istream;
 
+	/// Debugger interface, is this is a debugging token stream
+	///
+	pANTLR3_DEBUG_EVENT_LISTENER		debugger;
+
+	/// Indicates the initial stream state for dbgConsume()
+	///
+	ANTLR3_BOOLEAN			initialStreamState;
+
     /** Get Token at current input pointer + i ahead where i=1 is next Token.
      *  i<0 indicates tokens in the past.  So -1 is previous token and -2 is
      *  two tokens ago. LT(0) is undefined.  For i>=n, return Token.EOFToken.
      *  Return null for LT(0) and any index that results in an absolute address
      *  that is negative.
      */
-    pANTLR3_COMMON_TOKEN    (*_LT)		(struct ANTLR3_TOKEN_STREAM_struct * tokenStream, ANTLR3_INT64 k);
+    pANTLR3_COMMON_TOKEN    (*_LT)		(struct ANTLR3_TOKEN_STREAM_struct * tokenStream, ANTLR3_INT32 k);
 
     /** Get a token at an absolute index i; 0..n-1.  This is really only
      *  needed for profiling and debugging and token stream rewriting.
@@ -87,7 +107,7 @@ typedef	struct ANTLR3_TOKEN_STREAM_struct
      *  I believe DebugTokenStream can easily be altered to not use
      *  this method, removing the dependency.
      */
-    pANTLR3_COMMON_TOKEN    (*get)		(struct ANTLR3_TOKEN_STREAM_struct * tokenStream, ANTLR3_UINT64 i);
+    pANTLR3_COMMON_TOKEN    (*get)		(struct ANTLR3_TOKEN_STREAM_struct * tokenStream, ANTLR3_UINT32 i);
 
     /** Where is this stream pulling tokens from?  This is not the name, but
      *  a pointer into an interface that contains a ANTLR3_TOKEN_SOURCE interface.
@@ -111,7 +131,7 @@ typedef	struct ANTLR3_TOKEN_STREAM_struct
      *  return an empty ANTLR3_STRING or NULL;  Grammars should not access $ruleLabel.text in
      *  an action in that case.
      */
-    pANTLR3_STRING	    (*toStringSS)	(struct ANTLR3_TOKEN_STREAM_struct * tokenStream, ANTLR3_UINT64 start, ANTLR3_UINT64 stop);
+    pANTLR3_STRING	    (*toStringSS)	(struct ANTLR3_TOKEN_STREAM_struct * tokenStream, ANTLR3_UINT32 start, ANTLR3_UINT32 stop);
 
     /** Because the user is not required to use a token with an index stored
      *  in it, we must provide a means for two token objects themselves to
@@ -120,6 +140,11 @@ typedef	struct ANTLR3_TOKEN_STREAM_struct
      *  the pTREENODE_STREAM->toString(Object,Object).
      */
     pANTLR3_STRING	    (*toStringTT)	(struct ANTLR3_TOKEN_STREAM_struct * tokenStream, pANTLR3_COMMON_TOKEN start, pANTLR3_COMMON_TOKEN stop);
+
+
+	/** Function that sets the token stream into debugging mode
+	 */
+	void				(*setDebugListener)	    (struct ANTLR3_TOKEN_STREAM_struct * tokenStream, pANTLR3_DEBUG_EVENT_LISTENER debugger);
 
     /** Function that knows how to free the memory for an ANTLR3_TOKEN_STREAM
      */
@@ -180,7 +205,7 @@ typedef	struct	ANTLR3_COMMON_TOKEN_STREAM_struct
     /** The index into the tokens list of the current token (the next one that will be
      *  consumed. p = -1 indicates that the token list is empty.
      */
-    ANTLR3_INT64	    p;
+    ANTLR3_INT32	    p;
 
     /** A simple filter mechanism whereby you can tell this token stream
      *  to force all tokens of type ttype to be on channel.  For example,
@@ -208,22 +233,23 @@ typedef	struct	ANTLR3_COMMON_TOKEN_STREAM_struct
     /** Function that returns all the tokens between a start and a stop index.
      *  TODO: This is a new list (Ack! Maybe this is a reason to have factories for LISTS and HASHTABLES etc :-( come back to this)
      */
-    pANTLR3_LIST	    (*getTokenRange)	    (struct ANTLR3_COMMON_TOKEN_STREAM_struct * tokenStream, ANTLR3_UINT64 start, ANTLR3_UINT64 stop);
+    pANTLR3_LIST	    (*getTokenRange)	    (struct ANTLR3_COMMON_TOKEN_STREAM_struct * tokenStream, ANTLR3_UINT32 start, ANTLR3_UINT32 stop);
 
     /** Function that returns all the tokens indicated by the specified bitset, within a range of tokens
      */
     pANTLR3_LIST	    (*getTokensSet)	    (struct ANTLR3_COMMON_TOKEN_STREAM_struct * tokenStream, 
-							ANTLR3_UINT64 start, ANTLR3_UINT64 stop, pANTLR3_BITSET types);
+							ANTLR3_UINT32 start, ANTLR3_UINT32 stop, pANTLR3_BITSET types);
     
     /** Function that returns all the tokens indicated by being a member of the supplied List
      */
     pANTLR3_LIST	    (*getTokensList)	    (struct ANTLR3_COMMON_TOKEN_STREAM_struct * tokenStream, 
-							ANTLR3_UINT64 start, ANTLR3_UINT64 stop, pANTLR3_LIST list);
+							ANTLR3_UINT32 start, ANTLR3_UINT32 stop, pANTLR3_LIST list);
 
     /** Function that returns all tokens of a certain type within a range.
      */
     pANTLR3_LIST	    (*getTokensType)	    (struct ANTLR3_COMMON_TOKEN_STREAM_struct * tokenStream, 
-							ANTLR3_UINT64 start, ANTLR3_UINT64 stop, ANTLR3_UINT32 type);
+							ANTLR3_UINT32 start, ANTLR3_UINT32 stop, ANTLR3_UINT32 type);
+
 
     /** Function that knows how to free an ANTLR3_COMMON_TOKEN_STREAM
      */
@@ -231,5 +257,8 @@ typedef	struct	ANTLR3_COMMON_TOKEN_STREAM_struct
 }
     ANTLR3_COMMON_TOKEN_STREAM;
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

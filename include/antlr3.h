@@ -12,6 +12,7 @@
 #include    <antlr3intstream.h>
 #include    <antlr3filestream.h>
 #include    <antlr3collections.h>
+#include	<antlr3recognizersharedstate.h>
 #include    <antlr3baserecognizer.h>
 #include    <antlr3commontoken.h>
 #include    <antlr3tokenstream.h>
@@ -21,5 +22,6 @@
 #include    <antlr3basetreeadaptor.h>
 #include    <antlr3commontreeadaptor.h>
 #include    <antlr3rewritestreams.h>
+#include	<antlr3debugeventlistener.h>
 
 #endif

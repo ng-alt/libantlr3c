@@ -1,30 +1,30 @@
 /**
  * Contains the default implementation of the common token used within
  * java. Custom tokens should create this structure and then append to it using the 
- * custom pointer to install their own strcuture and API.
+ * custom pointer to install their own structure and API.
  */
 #include    <antlr3.h>
 
 /* Token API
  */
-static  pANTLR3_STRING	getText			(pANTLR3_COMMON_TOKEN token);
-static  void		setText			(pANTLR3_COMMON_TOKEN token, pANTLR3_STRING text);
-static  void		setText8		(pANTLR3_COMMON_TOKEN token, pANTLR3_UINT8 text);
-static	ANTLR3_UINT32   getType			(pANTLR3_COMMON_TOKEN token);
-static  void		setType			(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT32 type);
-static  ANTLR3_UINT64   getLine			(pANTLR3_COMMON_TOKEN token);
-static  void		setLine			(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT64 line);
+static  pANTLR3_STRING	getText					(pANTLR3_COMMON_TOKEN token);
+static  void			setText					(pANTLR3_COMMON_TOKEN token, pANTLR3_STRING text);
+static  void			setText8				(pANTLR3_COMMON_TOKEN token, pANTLR3_UINT8 text);
+static	ANTLR3_UINT32   getType					(pANTLR3_COMMON_TOKEN token);
+static  void			setType					(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT32 type);
+static  ANTLR3_UINT32   getLine					(pANTLR3_COMMON_TOKEN token);
+static  void			setLine					(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT32 line);
 static  ANTLR3_INT32    getCharPositionInLine	(pANTLR3_COMMON_TOKEN token);
-static  void		setCharPositionInLine	(pANTLR3_COMMON_TOKEN token, ANTLR3_INT32 pos);
-static  ANTLR3_UINT32   getChannel		(pANTLR3_COMMON_TOKEN token);
-static  void		setChannel		(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT32 channel);
-static  ANTLR3_UINT64   getTokenIndex		(pANTLR3_COMMON_TOKEN token);
-static  void		setTokenIndex		(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT64);
-static  ANTLR3_UINT64   getStartIndex		(pANTLR3_COMMON_TOKEN token);
-static  void		setStartIndex		(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT64 index);
-static  ANTLR3_UINT64   getStopIndex		(pANTLR3_COMMON_TOKEN token);
-static  void		setStopIndex		(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT64 index);
-static  pANTLR3_STRING  toString		(pANTLR3_COMMON_TOKEN token);
+static  void			setCharPositionInLine	(pANTLR3_COMMON_TOKEN token, ANTLR3_INT32 pos);
+static  ANTLR3_UINT32   getChannel				(pANTLR3_COMMON_TOKEN token);
+static  void			setChannel				(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT32 channel);
+static  ANTLR3_MARKER   getTokenIndex			(pANTLR3_COMMON_TOKEN token);
+static  void			setTokenIndex			(pANTLR3_COMMON_TOKEN token, ANTLR3_MARKER);
+static  ANTLR3_MARKER   getStartIndex			(pANTLR3_COMMON_TOKEN token);
+static  void			setStartIndex			(pANTLR3_COMMON_TOKEN token, ANTLR3_MARKER index);
+static  ANTLR3_MARKER   getStopIndex			(pANTLR3_COMMON_TOKEN token);
+static  void			setStopIndex			(pANTLR3_COMMON_TOKEN token, ANTLR3_MARKER index);
+static  pANTLR3_STRING  toString				(pANTLR3_COMMON_TOKEN token);
 
 /* Factory API
  */
@@ -42,20 +42,20 @@ static	pANTLR3_COMMON_TOKEN    newPoolToken	(pANTLR3_TOKEN_FACTORY factory);
 ANTLR3_API pANTLR3_COMMON_TOKEN
 antlr3CommonTokenNew(ANTLR3_UINT32 ttype)
 {
-    pANTLR3_COMMON_TOKEN    token;
-    
-    /* Create a raw token with the interface installed
-     */
-    token   = newToken();
+	pANTLR3_COMMON_TOKEN    token;
 
-    if	(token != (pANTLR3_COMMON_TOKEN)ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM))
-    {
-	token->setType(token, ttype);
-    }
+	// Create a raw token with the interface installed
+	//
+	token   = newToken();
 
-    /* All good
-     */
-    return  token;
+	if	(token != NULL)
+	{
+		token->setType(token, ttype);
+	}
+
+	// All good
+	//
+	return  token;
 }
 
 ANTLR3_API pANTLR3_TOKEN_FACTORY
@@ -69,7 +69,7 @@ antlr3TokenFactoryNew(pANTLR3_INPUT_STREAM input)
 
     if	(factory == NULL)
     {
-	return	(pANTLR3_TOKEN_FACTORY)ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM);
+	return	NULL;
     }
 
     /* Install factory API
@@ -100,7 +100,7 @@ antlr3TokenFactoryNew(pANTLR3_INPUT_STREAM input)
 static void
 setInputStream	(pANTLR3_TOKEN_FACTORY factory, pANTLR3_INPUT_STREAM input)
 {
-    factory->input	    =  input;
+    factory->input			=  input;
     factory->unTruc.input   =  input;
 }
 
@@ -115,7 +115,7 @@ newPool(pANTLR3_TOKEN_FACTORY factory)
      */
     factory->pools = (pANTLR3_COMMON_TOKEN *)
 		     ANTLR3_REALLOC(	(void *)factory->pools,	    /* Current pools pointer (starts at NULL)	*/
-					(ANTLR3_UINT64)((factory->thisPool + 1) * sizeof(pANTLR3_COMMON_TOKEN *))	/* Memory for new pool pointers */
+					(ANTLR3_UINT32)((factory->thisPool + 1) * sizeof(pANTLR3_COMMON_TOKEN *))	/* Memory for new pool pointers */
 					);
 
     /* Allocate a new pool for the factory
@@ -160,7 +160,7 @@ newPoolToken	    (pANTLR3_TOKEN_FACTORY factory)
 
     /* We have our token pointer now, so we can initialize it to the predefined model.
      */
-    ANTLR3_MEMMOVE((void *)token, (const void *)&factory->unTruc, (ANTLR3_UINT64)sizeof(ANTLR3_COMMON_TOKEN));
+    ANTLR3_MEMMOVE((void *)token, (const void *)&factory->unTruc, (ANTLR3_UINT32)sizeof(ANTLR3_COMMON_TOKEN));
 
     /* And we are done
      */
@@ -240,7 +240,7 @@ newToken(void)
 
     if	(token == NULL)
     {
-	return	(pANTLR3_COMMON_TOKEN)ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM);
+	return	NULL;
     }
 
     /* Install the API
@@ -288,6 +288,10 @@ antlr3SetTokenAPI(pANTLR3_COMMON_TOKEN token)
     token->line			    = 0;
     token->index		    = 0;
     token->input		    = NULL;
+	token->user1			= 0;
+	token->user2			= 0;
+	token->user3			= 0;
+	token->custom			= NULL;
 
     return;
 }
@@ -380,12 +384,12 @@ static  void		setType			(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT32 type)
     token->type = type;
 }
 
-static  ANTLR3_UINT64   getLine			(pANTLR3_COMMON_TOKEN token)
+static  ANTLR3_UINT32   getLine			(pANTLR3_COMMON_TOKEN token)
 {
     return  token->line;
 }
 
-static  void		setLine			(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT64 line)
+static  void		setLine			(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT32 line)
 {
     token->line = line;
 }
@@ -410,32 +414,32 @@ static  void		setChannel		(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT32 channel)
     token->channel  = channel;
 }
 
-static  ANTLR3_UINT64   getTokenIndex		(pANTLR3_COMMON_TOKEN token)
+static  ANTLR3_MARKER   getTokenIndex		(pANTLR3_COMMON_TOKEN token)
 {
     return  token->index;
 }
 
-static  void		setTokenIndex		(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT64 index)
+static  void		setTokenIndex		(pANTLR3_COMMON_TOKEN token, ANTLR3_MARKER index)
 {
     token->index    = index;
 }
 
-static  ANTLR3_UINT64   getStartIndex		(pANTLR3_COMMON_TOKEN token)
+static  ANTLR3_MARKER   getStartIndex		(pANTLR3_COMMON_TOKEN token)
 {
-	return  token->start == (ANTLR3_UINT64)-1 ? (ANTLR3_UINT64)(token->input->data) : token->start;  // TODO: correct this -1 business
+	return  token->start == -1 ? (ANTLR3_MARKER)(token->input->data) : token->start;
 }
 
-static  void		setStartIndex		(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT64 start)
+static  void		setStartIndex		(pANTLR3_COMMON_TOKEN token, ANTLR3_MARKER start)
 {
     token->start    = start;
 }
 
-static  ANTLR3_UINT64   getStopIndex		(pANTLR3_COMMON_TOKEN token)
+static  ANTLR3_MARKER   getStopIndex		(pANTLR3_COMMON_TOKEN token)
 {
     return  token->stop;
 }
 
-static  void		setStopIndex		(pANTLR3_COMMON_TOKEN token, ANTLR3_UINT64 stop)
+static  void		setStopIndex		(pANTLR3_COMMON_TOKEN token, ANTLR3_MARKER stop)
 {
     token->stop	= stop;
 }

@@ -6,63 +6,69 @@
 
 /* BASE Recognizer overrides
  */
-static void				mismatch	    (pANTLR3_BASE_RECOGNIZER recognizer, ANTLR3_UINT32 ttype, pANTLR3_BITSET follow);
+static void				mismatch	    (pANTLR3_BASE_RECOGNIZER recognizer, ANTLR3_UINT32 ttype, pANTLR3_BITSET_LIST follow);
 
 /* Tree parser API
  */
-static void			displayRecognitionError	    (pANTLR3_BASE_RECOGNIZER rec, pANTLR3_UINT8 * tokenNames);
-static void			recover			    (pANTLR3_BASE_RECOGNIZER rec, pANTLR3_INT_STREAM input);
+static void			displayRecognitionError	(pANTLR3_BASE_RECOGNIZER rec, pANTLR3_UINT8 * tokenNames);
+static void			recover					(pANTLR3_BASE_RECOGNIZER rec, pANTLR3_INT_STREAM input);
 static void			setTreeNodeStream	    (pANTLR3_TREE_PARSER parser, pANTLR3_COMMON_TREE_NODE_STREAM input);
 static pANTLR3_COMMON_TREE_NODE_STREAM	
-				getTreeNodeStream	    (pANTLR3_TREE_PARSER parser);
-static void			freeParser		    (pANTLR3_TREE_PARSER parser);    
-    
+					getTreeNodeStream	    (pANTLR3_TREE_PARSER parser);
+static void			freeParser				(pANTLR3_TREE_PARSER parser);    
+static void *		getCurrentInputSymbol	(pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_INT_STREAM istream);
+static void *		getMissingSymbol		(pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_INT_STREAM	istream, pANTLR3_EXCEPTION	e,
+												ANTLR3_UINT32 expectedTokenType, pANTLR3_BITSET_LIST follow);
+
+
 ANTLR3_API pANTLR3_TREE_PARSER
-antlr3TreeParserNewStream(ANTLR3_UINT32 sizeHint, pANTLR3_COMMON_TREE_NODE_STREAM ctnstream)
+antlr3TreeParserNewStream(ANTLR3_UINT32 sizeHint, pANTLR3_COMMON_TREE_NODE_STREAM ctnstream, pANTLR3_RECOGNIZER_SHARED_STATE state)
 {
-    pANTLR3_TREE_PARSER	    parser;
+	pANTLR3_TREE_PARSER	    parser;
 
-    /** Allocate tree parser memory
-    */
-    parser  =(pANTLR3_TREE_PARSER) ANTLR3_MALLOC(sizeof(ANTLR3_TREE_PARSER));
+	/** Allocate tree parser memory
+	*/
+	parser  =(pANTLR3_TREE_PARSER) ANTLR3_MALLOC(sizeof(ANTLR3_TREE_PARSER));
 
-    if	(parser == NULL)
-    {
-	return	(pANTLR3_TREE_PARSER) ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM);
-    }
+	if	(parser == NULL)
+	{
+		return	NULL;
+	}
 
-    /* Create and install a base recognizer which does most of the work for us
-     */
-    parser->rec =  antlr3BaseRecognizerNew(ANTLR3_TYPE_PARSER, sizeHint);
+	/* Create and install a base recognizer which does most of the work for us
+	*/
+	parser->rec =  antlr3BaseRecognizerNew(ANTLR3_TYPE_PARSER, sizeHint, state);
 
-    if	(parser->rec == (pANTLR3_BASE_RECOGNIZER) ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM))
-    {
-	parser->free(parser);
-	return	(pANTLR3_TREE_PARSER) ANTLR3_FUNC_PTR(ANTLR3_ERR_NOMEM);
-    }
-    
-    /* Ensure we can track back to the tree parser super structure
-     * from the base recognizer structure
-     */
-    parser->rec->super	= parser;
-    parser->rec->type	= ANTLR3_TYPE_TREE_PARSER;
+	if	(parser->rec == NULL)
+	{
+		parser->free(parser);
+		return	NULL;
+	}
 
-    /* Install our base recognizer overrides
-     */
-    parser->rec->mismatch	=  mismatch;
-    parser->rec->exConstruct	=  antlr3MTNExceptionNew;
+	/* Ensure we can track back to the tree parser super structure
+	* from the base recognizer structure
+	*/
+	parser->rec->super	= parser;
+	parser->rec->type	= ANTLR3_TYPE_TREE_PARSER;
 
-    /* Install tree parser API
-     */
-    parser->getTreeNodeStream	=  getTreeNodeStream;
-    parser->setTreeNodeStream	=  setTreeNodeStream;
-    parser->free		=  freeParser;
+	/* Install our base recognizer overrides
+	*/
+	parser->rec->mismatch				= mismatch;
+	parser->rec->exConstruct			= antlr3MTNExceptionNew;
+	parser->rec->getCurrentInputSymbol	= getCurrentInputSymbol;
+	parser->rec->getMissingSymbol		= getMissingSymbol;
 
-    /* Install the tree node stream
-     */
-    parser->setTreeNodeStream(parser, ctnstream);
+	/* Install tree parser API
+	*/
+	parser->getTreeNodeStream	=  getTreeNodeStream;
+	parser->setTreeNodeStream	=  setTreeNodeStream;
+	parser->free		=  freeParser;
 
-    return  parser;
+	/* Install the tree node stream
+	*/
+	parser->setTreeNodeStream(parser, ctnstream);
+
+	return  parser;
 }
 
 /**
@@ -77,14 +83,14 @@ antlr3TreeParserNewStream(ANTLR3_UINT32 sizeHint, pANTLR3_COMMON_TREE_NODE_STREA
 ANTLR3_API	void
 antlr3MTNExceptionNew(pANTLR3_BASE_RECOGNIZER recognizer)
 {
-    /* Create a basic recognition exception strucuture
+    /* Create a basic recognition exception structure
      */
     antlr3RecognitionExceptionNew(recognizer);
 
     /* Now update it to indicate this is a Mismatched token exception
      */
-    recognizer->exception->name		= ANTLR3_MISMATCHED_TREE_NODE_NAME;
-    recognizer->exception->type		= ANTLR3_MISMATCHED_TREE_NODE_EXCEPTION;
+    recognizer->state->exception->name		= ANTLR3_MISMATCHED_TREE_NODE_NAME;
+    recognizer->state->exception->type		= ANTLR3_MISMATCHED_TREE_NODE_EXCEPTION;
 
     return;
 }
@@ -93,13 +99,20 @@ antlr3MTNExceptionNew(pANTLR3_BASE_RECOGNIZER recognizer)
 static void
 freeParser	(pANTLR3_TREE_PARSER parser)
 {
-    if	(parser->rec != NULL)
-    {
-	    if	(parser->rec->following != NULL)
-	    {
-		parser->rec->following->free(parser->rec->following);
-		parser->rec->following = NULL;
-	    }
+	if	(parser->rec != NULL)
+	{
+		// This may have ben a delegate or delegator parser, in which case the
+		// state may already have been freed (and set to NULL therefore)
+		// so we ignore the state if we don't have it.
+		//
+		if	(parser->rec->state != NULL)
+		{
+			if	(parser->rec->state->following != NULL)
+			{
+				parser->rec->state->following->free(parser->rec->state->following);
+				parser->rec->state->following = NULL;
+			}
+		}
 	    parser->rec->free(parser->rec);
 	    parser->rec	= NULL;
     }
@@ -131,8 +144,76 @@ getTreeNodeStream	(pANTLR3_TREE_PARSER parser)
  *  plus we want to alter the exception type.
  */
 static void
-mismatch	    (pANTLR3_BASE_RECOGNIZER recognizer, ANTLR3_UINT32 ttype, pANTLR3_BITSET follow)
+mismatch	    (pANTLR3_BASE_RECOGNIZER recognizer, ANTLR3_UINT32 ttype, pANTLR3_BITSET_LIST follow)
 {
     recognizer->exConstruct(recognizer);
     recognizer->recoverFromMismatchedToken(recognizer, ttype, follow);
 }
+
+#ifdef ANTLR3_WINDOWS
+#pragma warning	(push)
+#pragma warning (disable : 4100)
+#endif
+
+// Default implementation is for parser and assumes a token stream as supplied by the runtime.
+// You MAY need override this function if the standard TOKEN_STREAM is not what you are using.
+//
+static void *				
+getCurrentInputSymbol		(pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_INT_STREAM istream)
+{
+	pANTLR3_TREE_NODE_STREAM		tns;
+    pANTLR3_COMMON_TREE_NODE_STREAM	ctns;
+
+    tns	    = (pANTLR3_TREE_NODE_STREAM)(istream->super);
+    ctns    = tns->ctns;
+	return tns->_LT(tns, 1);
+}
+
+
+// Default implementation is for parser and assumes a token stream as supplied by the runtime.
+// You MAY need override this function if the standard BASE_TREE is not what you are using.
+//
+static void *				
+getMissingSymbol			(pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_INT_STREAM	istream, pANTLR3_EXCEPTION	e,
+									ANTLR3_UINT32 expectedTokenType, pANTLR3_BITSET_LIST follow)
+{
+	pANTLR3_TREE_NODE_STREAM		tns;
+    pANTLR3_COMMON_TREE_NODE_STREAM	ctns;
+	pANTLR3_BASE_TREE				node;
+	pANTLR3_BASE_TREE				current;
+	pANTLR3_COMMON_TOKEN			token;
+	pANTLR3_STRING					text;
+
+	// Dereference the standard pointers
+	//
+    tns	    = (pANTLR3_TREE_NODE_STREAM)(istream->super);
+    ctns    = tns->ctns;
+
+	// Create a new empty node, by stealing the current one, or the previous one if the current one is EOF
+	//
+	current	= tns->_LT(tns, 1);
+
+	if	(current == &ctns->EOF_NODE.baseTree)
+	{
+		current = tns->_LT(tns, -1);
+	}
+	node	= current->dupNode(current);
+
+	// Find the newly dupicated token
+	//
+	token	= node->getToken(node);
+
+	// Create the token text that shows it has been inserted
+	//
+	token->setText8			(token, (pANTLR3_UINT8)"<missing ");
+	text = token->getText	(token);
+	text->append8			(text, (const char *)recognizer->state->tokenNames[expectedTokenType]);
+	text->append8			(text, (const char *)">");
+	
+	// Finally return the pointer to our new node
+	//
+	return	node;
+}
+#ifdef ANTLR3_WINDOWS
+#pragma warning	(pop)
+#endif

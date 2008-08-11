@@ -81,6 +81,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
+				AdditionalDependencies="Ws2_32.lib"
 				OutputFile="$(OutDir)/antlr3cd.lib"
 			/>
 			<Tool
@@ -160,6 +161,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
+				AdditionalDependencies="Ws2_32.lib"
 				OutputFile="$(OutDir)/antlr3cd.lib"
 			/>
 			<Tool
@@ -218,6 +220,7 @@
 				BufferSecurityCheck="false"
 				EnableEnhancedInstructionSet="2"
 				FloatingPointModel="2"
+				DisableLanguageExtensions="false"
 				RuntimeTypeInfo="false"
 				UsePrecompiledHeader="0"
 				AssemblerListingLocation=".\asm\release"
@@ -240,6 +243,7 @@
 			<Tool
 				Name="VCLibrarianTool"
 				AdditionalOptions="/LTCG"
+				AdditionalDependencies="Ws2_32.lib"
 				OutputFile="$(OutDir)/antlr3c.lib"
 			/>
 			<Tool
@@ -298,7 +302,7 @@
 				ExceptionHandling="1"
 				RuntimeLibrary="2"
 				BufferSecurityCheck="false"
-				EnableEnhancedInstructionSet="2"
+				EnableEnhancedInstructionSet="0"
 				FloatingPointModel="2"
 				RuntimeTypeInfo="false"
 				UsePrecompiledHeader="0"
@@ -322,6 +326,7 @@
 			<Tool
 				Name="VCLibrarianTool"
 				AdditionalOptions="/LTCG"
+				AdditionalDependencies="Ws2_32.lib"
 				OutputFile="$(OutDir)/antlr3c.lib"
 			/>
 			<Tool
@@ -404,6 +409,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="Ws2_32.lib"
 				OutputFile="$(OutDir)\antlr3c.dll"
 				Version="3.0b4"
 				OptimizeReferences="2"
@@ -476,7 +482,7 @@
 				ExceptionHandling="1"
 				RuntimeLibrary="2"
 				BufferSecurityCheck="false"
-				EnableEnhancedInstructionSet="2"
+				EnableEnhancedInstructionSet="0"
 				FloatingPointModel="2"
 				DisableLanguageExtensions="false"
 				RuntimeTypeInfo="false"
@@ -500,6 +506,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="Ws2_32.lib"
 				OutputFile="$(OutDir)\antlr3c64.dll"
 				Version="3.0.0.1"
 				OptimizeReferences="2"
@@ -594,6 +601,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="Ws2_32.lib"
 				OutputFile="$(OutDir)\antlr3cd.dll"
 				Version="1.0b4"
 				GenerateDebugInformation="true"
@@ -686,6 +694,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="Ws2_32.lib"
 				OutputFile="$(OutDir)\antlr3c64d.dll"
 				Version="3.0.0.1"
 				GenerateDebugInformation="true"
@@ -763,7 +772,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\antlr3convertutf.c"
+				>
+			</File>
+			<File
 				RelativePath=".\src\antlr3cyclicdfa.c"
+				>
+			</File>
+			<File
+				RelativePath=".\src\antlr3debughandlers.c"
 				>
 			</File>
 			<File
@@ -865,7 +882,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\antlr3convertutf.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\antlr3cyclicdfa.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\antlr3debugeventlistener.h"
 				>
 			</File>
 			<File
@@ -917,6 +942,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\antlr3recognizersharedstate.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\antlr3rewritestreams.h"
 				>
 			</File>
@@ -950,15 +979,19 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\org\antlr\codegen\templates\C\ASTParser.stg"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\org\antlr\codegen\templates\C\ASTTreeParser.stg"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\org\antlr\codegen\templates\C\C.stg"
 				>
 			</File>
 			<File
 				RelativePath="..\..\src\org\antlr\codegen\templates\C\Dbg.stg"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\org\antlr\codegen\templates\C\ST.stg"
 				>
 			</File>
 			<Filter
@@ -980,7 +1013,55 @@
 				>
 			</File>
 		</Filter>
+		<Filter
+			Name="Doxygen"
+			>
+			<File
+				RelativePath=".\doxygen\atsections.dox"
+				>
+			</File>
+			<File
+				RelativePath=".\doxygen\build.dox"
+				>
+			</File>
+			<File
+				RelativePath=".\doxygen\buildrec.dox"
+				>
+			</File>
+			<File
+				RelativePath=".\doxygen\changes31.dox"
+				>
+			</File>
+			<File
+				RelativePath=".\doxygen\doxygengroups.dox"
+				>
+			</File>
+			<File
+				RelativePath=".\doxygen\generate.dox"
+				>
+			</File>
+			<File
+				RelativePath=".\doxygen\interop.dox"
+				>
+			</File>
+			<File
+				RelativePath=".\doxygen\mainpage.dox"
+				>
+			</File>
+			<File
+				RelativePath=".\doxygen\runtime.dox"
+				>
+			</File>
+			<File
+				RelativePath=".\doxygen\using.dox"
+				>
+			</File>
+		</Filter>
 	</Files>
 	<Globals>
+		<Global
+			Name="DevPartner_IsInstrumented"
+			Value="0"
+		/>
 	</Globals>
 </VisualStudioProject>
