@@ -92,10 +92,16 @@ ANTLR3_TREE_ADAPTORNew(pANTLR3_STRING_FACTORY strFactory)
                                                     getChild;
 	cta->baseAdaptor.setChild				=  (void   (*) (pANTLR3_BASE_TREE_ADAPTOR, void *, ANTLR3_UINT32, void *))
                                                     setChild;
+	cta->baseAdaptor.setParent				=  (void   (*) (pANTLR3_BASE_TREE_ADAPTOR, void *, void *))
+                                                    setParent;
+	cta->baseAdaptor.setChildIndex			=  (void   (*) (pANTLR3_BASE_TREE_ADAPTOR, void *, ANTLR3_UINT32))
+                                                    setChildIndex;
 	cta->baseAdaptor.deleteChild			=  (void   (*) (pANTLR3_BASE_TREE_ADAPTOR, void *, ANTLR3_UINT32))
                                                     deleteChild;
 	cta->baseAdaptor.getChildCount			=  (ANTLR3_UINT32  (*) (pANTLR3_BASE_TREE_ADAPTOR, void *))
                                                     getChildCount;
+	cta->baseAdaptor.getChildIndex			=  (ANTLR3_INT32  (*) (pANTLR3_BASE_TREE_ADAPTOR, void *))
+                                                    getChildIndex;
 	cta->baseAdaptor.free					=  (void  (*) (pANTLR3_BASE_TREE_ADAPTOR))
                                                     ctaFree;
 	cta->baseAdaptor.setDebugEventListener	=  
@@ -115,9 +121,10 @@ ANTLR3_TREE_ADAPTORNew(pANTLR3_STRING_FACTORY strFactory)
 
 	// Install a token factory for imaginary tokens, these imaginary
 	// tokens do not require access to the input stream so we can
-	// dummy the creation of it.
+	// dummy the creation of it, but they will need a string factory.
 	//
-	cta->baseAdaptor.tokenFactory   = antlr3TokenFactoryNew(NULL);
+	cta->baseAdaptor.tokenFactory						= antlr3TokenFactoryNew(NULL);
+	cta->baseAdaptor.tokenFactory->unTruc.strFactory	= strFactory;
 
 	// Allow the base tree adaptor to share the tree factory's string factory.
 	//
@@ -212,7 +219,7 @@ errorNode				(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_TOKEN_STREAM ctnstream,
 static	pANTLR3_BASE_TREE
 dupNode		(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE treeNode)
 {
-    return  treeNode->dupNode(treeNode);
+	return  treeNode == NULL ? NULL : treeNode->dupNode(treeNode);
 }
 
 static	pANTLR3_BASE_TREE
@@ -255,14 +262,12 @@ createToken		(pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenType, pANTLR
     newToken	= adaptor->tokenFactory->newToken(adaptor->tokenFactory);
 
     if	(newToken != NULL)
-    {
-	/* Create the text using our own string factory to avoid complicating
-	 * commontoken.
-	 */
-	newToken->text	= adaptor->strFactory->newStr8(adaptor->strFactory, text);
-	newToken->setType(newToken, tokenType);
+    {	
+		newToken->textState		= ANTLR3_TEXT_CHARP;
+		newToken->tokText.chars = (pANTLR3_UCHAR)text;
+		newToken->setType(newToken, tokenType);
+		newToken->input				= adaptor->tokenFactory->input;
     }
-
     return  newToken;
 }
 
@@ -293,20 +298,30 @@ createTokenFromToken	(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_COMMON_TOKEN fr
     
     if	(newToken != NULL)
     {
-	/* Create the text using our own string factory to avoid complicating
-	 * commontoken.
-	 */
-	pANTLR3_STRING	text;
+		// Create the text using our own string factory to avoid complicating
+		// commontoken.
+		//
+		pANTLR3_STRING	text;
 
-	newToken->toString  = fromToken->toString;
-	text		    = fromToken->getText(fromToken);
-	newToken->text	    = adaptor->strFactory->newPtr(adaptor->strFactory, text->chars, text->len);
+		newToken->toString  = fromToken->toString;
 
-	newToken->setLine		(newToken, fromToken->getLine(fromToken));
-	newToken->setTokenIndex		(newToken, fromToken->getTokenIndex(fromToken));
-	newToken->setCharPositionInLine	(newToken, fromToken->getCharPositionInLine(fromToken));
-	newToken->setChannel		(newToken, fromToken->getChannel(fromToken));
-	newToken->setType		(newToken, fromToken->getType(fromToken));
+		if	(fromToken->textState == ANTLR3_TEXT_CHARP)
+		{
+			newToken->textState		= ANTLR3_TEXT_CHARP;
+			newToken->tokText.chars	= fromToken->tokText.chars;
+		}
+		else
+		{
+			text						= fromToken->getText(fromToken);
+			newToken->textState			= ANTLR3_TEXT_STRING;
+			newToken->tokText.text	    = adaptor->strFactory->newPtr(adaptor->strFactory, text->chars, text->len);
+		}
+
+		newToken->setLine				(newToken, fromToken->getLine(fromToken));
+		newToken->setTokenIndex			(newToken, fromToken->getTokenIndex(fromToken));
+		newToken->setCharPositionInLine	(newToken, fromToken->getCharPositionInLine(fromToken));
+		newToken->setChannel			(newToken, fromToken->getChannel(fromToken));
+		newToken->setType				(newToken, fromToken->getType(fromToken));
     }
 
     return  newToken;
@@ -439,7 +454,7 @@ setChildIndex			(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t, ANTLR3_
 static  ANTLR3_INT32
 getChildIndex			(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t)
 {
-	t->getChildIndex(t);
+	return t->getChildIndex(t);
 }
 static	void
 setParent				(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE child, pANTLR3_BASE_TREE parent)

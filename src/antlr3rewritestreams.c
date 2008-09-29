@@ -42,7 +42,22 @@ freeRS	(pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream)
 	//
 	if	(stream->elements != NULL)
 	{
-		stream->elements->clear(stream->elements);
+		// Protext factory generated nodes as we cannot clear them,
+		// the factory is responsible for that.
+		//
+		if	(stream->elements->factoryMade == ANTLR3_TRUE)
+		{
+			stream->elements = NULL;
+		} 
+		else
+		{
+			stream->elements->clear(stream->elements);
+			stream->freeElements = ANTLR3_TRUE;
+		}
+	}
+	else
+	{
+		stream->freeElements = ANTLR3_FALSE; // Just in case
 	}
 
 	// Add the stream into the recognizer stream stack vector
@@ -100,22 +115,23 @@ antlr3RewriteRuleElementStreamNewAE(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_B
 		stream->elements		= NULL;
 		stream->freeElements	= ANTLR3_FALSE;
 	}
-		// Populate the generic interface
-		//
-		stream->rec				= rec;
-		stream->reset			= reset;
-		stream->add				= add;
-		stream->next			= next;
-		stream->nextTree		= nextTree;
-		stream->nextNode		= nextNode;
-		stream->nextToken		= nextToken;
-		stream->_next			= _next;
-		stream->hasNext			= hasNext;
-		stream->size			= size;
-		stream->getDescription  = getDescription;
-		stream->toTree			= toTree;
-		stream->free			= freeRS;
-		stream->singleElement	= NULL;
+
+	// Populate the generic interface
+	//
+	stream->rec				= rec;
+	stream->reset			= reset;
+	stream->add				= add;
+	stream->next			= next;
+	stream->nextTree		= nextTree;
+	stream->nextNode		= nextNode;
+	stream->nextToken		= nextToken;
+	stream->_next			= _next;
+	stream->hasNext			= hasNext;
+	stream->size			= size;
+	stream->getDescription  = getDescription;
+	stream->toTree			= toTree;
+	stream->free			= freeRS;
+	stream->singleElement	= NULL;
 
 	// Reset the stream to empty.
 	//
@@ -175,8 +191,12 @@ antlr3RewriteRuleElementStreamNewAEV(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_
 	// given. We assume that someone else is going to free the
 	// vector.
 	//
-	stream->elements	= vector;
-
+	if	(stream->elements != NULL && stream->elements->factoryMade == ANTLR3_FALSE && stream->freeElements == ANTLR3_TRUE )
+	{
+		stream->elements->free(stream->elements);
+	}
+	stream->elements		= vector;
+	stream->freeElements	= ANTLR3_FALSE;
 	return stream;
 }
 

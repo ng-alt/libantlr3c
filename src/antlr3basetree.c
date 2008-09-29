@@ -14,7 +14,6 @@ getFirstChildWithType
 (pANTLR3_BASE_TREE tree, ANTLR3_UINT32 type);
 static void					addChild			(pANTLR3_BASE_TREE tree, pANTLR3_BASE_TREE child);
 static void					addChildren			(pANTLR3_BASE_TREE tree, pANTLR3_LIST kids);
-static void					createChildrenList	(pANTLR3_BASE_TREE tree);
 static void					replaceChildren		(pANTLR3_BASE_TREE parent, ANTLR3_INT32 startChildIndex, ANTLR3_INT32 stopChildIndex, pANTLR3_BASE_TREE t);
 
 static	void				freshenPACIndexesAll(pANTLR3_BASE_TREE tree);
@@ -117,7 +116,6 @@ addChild (pANTLR3_BASE_TREE tree, pANTLR3_BASE_TREE child)
 {
 	ANTLR3_UINT32   n;
 	ANTLR3_UINT32   i;
-	pANTLR3_BASE_TREE newChild;
 
 	if	(child == NULL)
 	{
@@ -156,7 +154,7 @@ addChild (pANTLR3_BASE_TREE tree, pANTLR3_BASE_TREE child)
 				//
 				if  (entry != NULL)
 				{
-					tree->children->add(tree->children, entry->dupTree(entry), (void (ANTLR3_CDECL *)(void *))child->free);
+					tree->children->add(tree->children, entry, (void (ANTLR3_CDECL *)(void *))child->free);
 				}
 			}
 		}
@@ -172,8 +170,8 @@ addChild (pANTLR3_BASE_TREE tree, pANTLR3_BASE_TREE child)
 			//
 			tree->createChildrenList(tree);
 		}
-		newChild = child->dupTree(child);
-		tree->children->add(tree->children, newChild, (void (ANTLR3_CDECL *)(void *))child->free);
+
+		tree->children->add(tree->children, child, (void (ANTLR3_CDECL *)(void *))child->free);
 		
 	}
 }
@@ -313,7 +311,7 @@ replaceChildren		(pANTLR3_BASE_TREE parent, ANTLR3_INT32 startChildIndex, ANTLR3
 
 	if	(parent->children == NULL)
 	{
-		ANTLR3_FPRINTF(stderr, "replaceChildren call: Indexes are invalid; no children in list for %s", parent->getText(parent));
+		ANTLR3_FPRINTF(stderr, "replaceChildren call: Indexes are invalid; no children in list for %s", parent->getText(parent)->chars);
 		return;
 	}
 

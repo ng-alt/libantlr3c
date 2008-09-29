@@ -16,11 +16,10 @@ static	ANTLR3_BOOLEAN				hasUniqueNavigationNodes	(pANTLR3_COMMON_TREE_NODE_STRE
 static	pANTLR3_BASE_TREE			newDownNode					(pANTLR3_COMMON_TREE_NODE_STREAM ctns);
 static	pANTLR3_BASE_TREE			newUpNode					(pANTLR3_COMMON_TREE_NODE_STREAM ctns);
 static	void						reset						(pANTLR3_COMMON_TREE_NODE_STREAM ctns);
-static	pANTLR3_STRING				toNodesOnlyString			(pANTLR3_COMMON_TREE_NODE_STREAM ctns);
 static	void						push						(pANTLR3_COMMON_TREE_NODE_STREAM ctns, ANTLR3_INT32 index);
 static	ANTLR3_INT32				pop							(pANTLR3_COMMON_TREE_NODE_STREAM ctns);
 //static	ANTLR3_INT32				index						(pANTLR3_COMMON_TREE_NODE_STREAM ctns);
-
+static	ANTLR3_UINT32				getLookaheadSize			(pANTLR3_COMMON_TREE_NODE_STREAM ctns);
 // TREE NODE STREAM API
 //
 static	pANTLR3_BASE_TREE_ADAPTOR   getTreeAdaptor				(pANTLR3_TREE_NODE_STREAM tns);
@@ -50,7 +49,6 @@ static	ANTLR3_UINT32				size						(pANTLR3_INT_STREAM is);
 //
 static	void						fillBuffer					(pANTLR3_COMMON_TREE_NODE_STREAM ctns, pANTLR3_BASE_TREE t);
 static	void						fillBufferRoot				(pANTLR3_COMMON_TREE_NODE_STREAM ctns);
-static	ANTLR3_INT32				getNodeIndex				(pANTLR3_COMMON_TREE_NODE_STREAM ctns, pANTLR3_BASE_TREE t);
 
 // Constructors
 //
@@ -159,6 +157,7 @@ antlr3CommonTreeNodeStreamNewStream(pANTLR3_COMMON_TREE_NODE_STREAM inStream)
 	stream->reset						=  reset;
 	stream->push						=  push;
 	stream->pop							=  pop;
+	stream->getLookaheadSize			=  getLookaheadSize;
 
 	stream->free			    =  antlr3CommonTreeNodeStreamFree;
 
@@ -216,10 +215,14 @@ antlr3CommonTreeNodeStreamNewStream(pANTLR3_COMMON_TREE_NODE_STREAM inStream)
 	antlr3SetCTAPI(&(stream->EOF_NODE));
 	antlr3SetCTAPI(&(stream->INVALID_NODE));
 
-	stream->UP.token			= inStream->UP.token;
-	stream->DOWN.token			= inStream->DOWN.token;
-	stream->EOF_NODE.token		= inStream->EOF_NODE.token;
-	stream->INVALID_NODE.token	= inStream->INVALID_NODE.token;
+	stream->UP.token						= inStream->UP.token;
+	inStream->UP.token->strFactory			= stream->stringFactory;
+	stream->DOWN.token						= inStream->DOWN.token;
+	inStream->DOWN.token->strFactory		= stream->stringFactory;
+	stream->EOF_NODE.token					= inStream->EOF_NODE.token;
+	inStream->EOF_NODE.token->strFactory	= stream->stringFactory;
+	stream->INVALID_NODE.token				= inStream->INVALID_NODE.token;
+	inStream->INVALID_NODE.token->strFactory			= stream->stringFactory;
 
 	// Reuse the root tree of the originating stream
 	//
@@ -356,19 +359,27 @@ antlr3CommonTreeNodeStreamNew(pANTLR3_STRING_FACTORY strFactory, ANTLR3_UINT32 h
 	antlr3SetCTAPI(&(stream->INVALID_NODE));
 
 	token						= antlr3CommonTokenNew(ANTLR3_TOKEN_UP);
-	token->text					= stream->stringFactory->newPtr(stream->stringFactory, (pANTLR3_UINT8)"UP", 2);
+	token->strFactory			= strFactory;
+	token->textState			= ANTLR3_TEXT_CHARP;
+	token->tokText.chars		= (pANTLR3_UCHAR)"UP";
 	stream->UP.token			= token;
 
 	token						= antlr3CommonTokenNew(ANTLR3_TOKEN_DOWN);
-	token->text					= stream->stringFactory->newPtr(stream->stringFactory, (pANTLR3_UINT8)"DOWN", 2);
+	token->strFactory			= strFactory;
+	token->textState			= ANTLR3_TEXT_CHARP;
+	token->tokText.chars		= (pANTLR3_UCHAR)"DOWN";
 	stream->DOWN.token			= token;
 
 	token						= antlr3CommonTokenNew(ANTLR3_TOKEN_EOF);
-	token->text					= stream->stringFactory->newPtr(stream->stringFactory, (pANTLR3_UINT8)"EOF", 2);
+	token->strFactory			= strFactory;
+	token->textState			= ANTLR3_TEXT_CHARP;
+	token->tokText.chars		= (pANTLR3_UCHAR)"EOF";
 	stream->EOF_NODE.token		= token;
 
 	token						= antlr3CommonTokenNew(ANTLR3_TOKEN_INVALID);
-	token->text					= stream->stringFactory->newPtr(stream->stringFactory, (pANTLR3_UINT8)"INVALID", 2);
+	token->strFactory			= strFactory;
+	token->textState			= ANTLR3_TEXT_CHARP;
+	token->tokText.chars		= (pANTLR3_UCHAR)"INVALID";
 	stream->INVALID_NODE.token	= token;
 
 
@@ -475,36 +486,6 @@ fillBuffer(pANTLR3_COMMON_TREE_NODE_STREAM ctns, pANTLR3_BASE_TREE t)
 	}
 }
 
-/// Determine the stream index for a particular node.
-/// NB: This uses internal knowledge of the Antlr3 Vector for the
-/// sake of efficiency. Don't do this in application code. 
-/// This is just an internal debugging type interface so does not need to be improved.
-///
-static ANTLR3_INT32
-getNodeIndex(pANTLR3_COMMON_TREE_NODE_STREAM ctns, pANTLR3_BASE_TREE t)
-{
-	ANTLR3_UINT32	i;
-	ANTLR3_UINT32	j;
-	pANTLR3_VECTOR_ELEMENT	elements;
-
-	if	(ctns->p == -1)
-	{
-		fillBufferRoot(ctns);
-	}
-
-	j	= ctns->nodes->count;
-
-	elements = ctns->nodes->elements;
-
-	for	(i = 0; i < j; i++)
-	{
-		if	(t == elements[i].element)
-		{
-			return i;
-		}
-	}
-}
-
 
 // ------------------------------------------------------------------------------
 // Interface functions
@@ -515,7 +496,10 @@ getNodeIndex(pANTLR3_COMMON_TREE_NODE_STREAM ctns, pANTLR3_BASE_TREE t)
 static	void		
 reset	    (pANTLR3_COMMON_TREE_NODE_STREAM ctns)
 {
-	ctns->p									= -1;
+	if	(ctns->p != -1)
+	{
+		ctns->p									= 0;
+	}
 	ctns->tnstream->istream->lastMarker		= 0;
 
 
@@ -879,9 +863,10 @@ newDownNode		(pANTLR3_COMMON_TREE_NODE_STREAM ctns)
     pANTLR3_COMMON_TREE	    dNode;
     pANTLR3_COMMON_TOKEN    token;
 
-    token	= antlr3CommonTokenNew(ANTLR3_TOKEN_DOWN);
-    token->text	= ctns->stringFactory->newPtr(ctns->stringFactory, (pANTLR3_UINT8)"DOWN", 4);
-    dNode	= antlr3CommonTreeNewFromToken(token);
+    token					= antlr3CommonTokenNew(ANTLR3_TOKEN_DOWN);
+	token->textState		= ANTLR3_TEXT_CHARP;
+	token->tokText.chars	= (pANTLR3_UCHAR)"DOWN";
+    dNode					= antlr3CommonTreeNewFromToken(token);
 
     return  &(dNode->baseTree);
 }
@@ -892,9 +877,10 @@ newUpNode		(pANTLR3_COMMON_TREE_NODE_STREAM ctns)
     pANTLR3_COMMON_TREE	    uNode;
     pANTLR3_COMMON_TOKEN    token;
 
-    token	= antlr3CommonTokenNew(ANTLR3_TOKEN_UP);
-    token->text	= ctns->stringFactory->newPtr(ctns->stringFactory, (pANTLR3_UINT8)"UP", 2);
-    uNode	= antlr3CommonTreeNewFromToken(token);
+    token					= antlr3CommonTokenNew(ANTLR3_TOKEN_UP);
+	token->textState		= ANTLR3_TEXT_CHARP;
+	token->tokText.chars	= (pANTLR3_UCHAR)"UP";
+    uNode					= antlr3CommonTreeNewFromToken(token);
 
     return  &(uNode->baseTree);
 }

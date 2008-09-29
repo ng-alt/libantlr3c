@@ -10,8 +10,6 @@ static void				mismatch	    (pANTLR3_BASE_RECOGNIZER recognizer, ANTLR3_UINT32 t
 
 /* Tree parser API
  */
-static void			displayRecognitionError	(pANTLR3_BASE_RECOGNIZER rec, pANTLR3_UINT8 * tokenNames);
-static void			recover					(pANTLR3_BASE_RECOGNIZER rec, pANTLR3_INT_STREAM input);
 static void			setTreeNodeStream	    (pANTLR3_TREE_PARSER parser, pANTLR3_COMMON_TREE_NODE_STREAM input);
 static pANTLR3_COMMON_TREE_NODE_STREAM	
 					getTreeNodeStream	    (pANTLR3_TREE_PARSER parser);
@@ -217,3 +215,4 @@ getMissingSymbol			(pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_INT_STREAM	istre
 #ifdef ANTLR3_WINDOWS
 #pragma warning	(pop)
 #endif
+
