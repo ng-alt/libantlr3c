@@ -1,6 +1,36 @@
 /// \file 
 /// Default implementation of CommonTokenStream
 ///
+
+// [The "BSD licence"]
+// Copyright (c) 2005-2009 Jim Idle, Temporal Wave LLC
+// http://www.temporal-wave.com
+// http://www.linkedin.com/in/jimidle
+//
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #include    <antlr3tokenstream.h>
 
 #ifdef	ANTLR3_WINDOWS
@@ -165,7 +195,7 @@ antlr3CommonTokenStreamSourceNew(ANTLR3_UINT32 hint, pANTLR3_TOKEN_SOURCE source
     
     stream->channelOverrides	= NULL;
     stream->discardSet		= NULL;
-    stream->discardOffChannel	= ANTLR3_TRUE;
+    stream->discardOffChannel	= ANTLR3_FALSE;
 
     stream->tstream->setTokenSource(stream->tstream, source);
 
@@ -279,6 +309,10 @@ tokLT  (pANTLR3_TOKEN_STREAM ts, ANTLR3_INT32 k)
 
 	cts	    = (pANTLR3_COMMON_TOKEN_STREAM)ts->super;
 
+    if	(k < 0)
+	{
+		return LB(cts, -k);
+	}
 
 	if	(cts->p == -1)
 	{
@@ -287,10 +321,6 @@ tokLT  (pANTLR3_TOKEN_STREAM ts, ANTLR3_INT32 k)
 	if	(k == 0)
 	{
 		return NULL;
-	}
-	if	(k < 0)
-	{
-		return LB(cts, -k);
 	}
 
 	if	((cts->p + k - 1) >= (ANTLR3_INT32)ts->istream->cachedSize)
@@ -313,7 +343,7 @@ tokLT  (pANTLR3_TOKEN_STREAM ts, ANTLR3_INT32 k)
 		i = skipOffTokenChannels(cts, i+1); /* leave p on valid token    */
 		n++;
 	}
-	if	( (ANTLR3_UINT32) i > ts->istream->cachedSize)
+	if	( (ANTLR3_UINT32) i >= ts->istream->cachedSize)
 	{
 		pANTLR3_COMMON_TOKEN    teof = &(ts->tokenSource->eofToken);
 
@@ -371,44 +401,47 @@ dbgTokLT  (pANTLR3_TOKEN_STREAM ts, ANTLR3_INT32 k)
 #pragma warning( disable : 4702 )
 #endif
 
-static	pANTLR3_COMMON_TOKEN
-LB  (pANTLR3_COMMON_TOKEN_STREAM cts, ANTLR3_INT32 k)
+static pANTLR3_COMMON_TOKEN
+LB(pANTLR3_COMMON_TOKEN_STREAM cts, ANTLR3_INT32 k)
 {
-    ANTLR3_INT32    i;
-    ANTLR3_INT32    n;
+    ANTLR3_INT32 i;
+    ANTLR3_INT32 n;
 
-    if	(cts->p == -1)
+    if (cts->p == -1)
     {
-	fillBuffer(cts);
+        fillBuffer(cts);
     }
-    if	(k == 0)
+    if (k == 0)
     {
-	return NULL;
+        return NULL;
     }
-    if	((cts->p - k) < 0)
+    if ((cts->p - k) < 0)
     {
-	return NULL;
+        return NULL;
     }
 
-    i	= cts->p;
-    n	= 1;
+    i = cts->p;
+    n = 1;
 
     /* Need to find k good tokens, going backwards, skipping ones that are off channel
      */
-    while   (  n <= (ANTLR3_INT32)k )
+    while (n <= (ANTLR3_INT32) k)
     {
-	/* Skip off-channel tokens 
-	 */
+        /* Skip off-channel tokens
+         */
 
-	i = skipOffTokenChannelsReverse(cts, i-1); /* leave p on valid token    */
-	n++;
+        i = skipOffTokenChannelsReverse(cts, i - 1); /* leave p on valid token    */
+        n++;
     }
-    if	( i <0 )
+    if (i < 0)
     {
-	return	NULL;
+        return NULL;
     }
-
-    return  (pANTLR3_COMMON_TOKEN)cts->tokens->get(cts->tokens, i);
+	// Here the token must be in the input vector. Rather then incut
+	// function call penalty, we jsut return the pointer directly
+	// from the vector
+	//
+	return  (pANTLR3_COMMON_TOKEN)cts->tokens->elements[i].element;
 }
 
 static pANTLR3_COMMON_TOKEN 
@@ -449,47 +482,46 @@ toString    (pANTLR3_TOKEN_STREAM ts)
     return  ts->toStringSS(ts, 0, ts->istream->size(ts->istream));
 }
 
-static pANTLR3_STRING	    
-toStringSS   (pANTLR3_TOKEN_STREAM ts, ANTLR3_UINT32 start, ANTLR3_UINT32 stop)
+static pANTLR3_STRING
+toStringSS(pANTLR3_TOKEN_STREAM ts, ANTLR3_UINT32 start, ANTLR3_UINT32 stop)
 {
-    pANTLR3_STRING		string;
-    pANTLR3_TOKEN_SOURCE	tsource;
-    pANTLR3_COMMON_TOKEN	tok;
-    ANTLR3_UINT32		i;
+    pANTLR3_STRING string;
+    pANTLR3_TOKEN_SOURCE tsource;
+    pANTLR3_COMMON_TOKEN tok;
+    ANTLR3_UINT32 i;
     pANTLR3_COMMON_TOKEN_STREAM cts;
 
-    cts	    = (pANTLR3_COMMON_TOKEN_STREAM)ts->super;
+    cts = (pANTLR3_COMMON_TOKEN_STREAM) ts->super;
 
-    if	(cts->p == -1)
+    if (cts->p == -1)
     {
-	fillBuffer(cts);
+        fillBuffer(cts);
     }
-    if	(stop >= ts->istream->size(ts->istream))
+    if (stop >= ts->istream->size(ts->istream))
     {
-	stop = ts->istream->size(ts->istream)-1;
+        stop = ts->istream->size(ts->istream) - 1;
     }
-    
+
     /* Who is giving us these tokens?
      */
-    tsource  = ts->getTokenSource(ts);
+    tsource = ts->getTokenSource(ts);
 
-    if	(tsource != NULL && cts->tokens != NULL)
+    if (tsource != NULL && cts->tokens != NULL)
     {
-	/* Finally, let's get a string
-	 */
-	string	= tsource->strFactory->newRaw(tsource->strFactory);
+        /* Finally, let's get a string
+         */
+        string = tsource->strFactory->newRaw(tsource->strFactory);
 
-	for (i = start; i <= stop; i++)
-	{
-	    tok	= ts->get(ts, i);
+        for (i = start; i <= stop; i++)
+        {
+            tok = ts->get(ts, i);
+            if (tok != NULL)
+            {
+                string->appendS(string, tok->getText(tok));
+            }
+        }
 
-	    if	(tok != NULL)
-	    {
-		string->appendS(string, tok->getText(tok));
-	    }
-	}
-
-	return	string;
+        return string;
     }
     return NULL;
 
@@ -723,7 +755,7 @@ _LA  (pANTLR3_INT_STREAM is, ANTLR3_INT32 i)
 
 	ts	    = (pANTLR3_TOKEN_STREAM)	    is->super;
 
-	tok	    = ts->_LT(ts, i);
+	tok	    =  ts->_LT(ts, i);
 
 	if	(tok != NULL)
 	{
@@ -860,108 +892,112 @@ dbgSeek	(pANTLR3_INT_STREAM is, ANTLR3_MARKER index)
 	//
 	seek(is, index);
 }
-
-static void
-fillBuffer  (pANTLR3_COMMON_TOKEN_STREAM tokenStream)
+ANTLR3_API void
+fillBufferExt(pANTLR3_COMMON_TOKEN_STREAM tokenStream)
 {
-    ANTLR3_UINT32	    index;
-    pANTLR3_COMMON_TOKEN    tok;
-    ANTLR3_BOOLEAN	    discard;
-    void		  * channelI;
+    fillBuffer(tokenStream);
+}
+static void
+fillBuffer(pANTLR3_COMMON_TOKEN_STREAM tokenStream) {
+    ANTLR3_UINT32 index;
+    pANTLR3_COMMON_TOKEN tok;
+    ANTLR3_BOOLEAN discard;
+    void * channelI;
 
     /* Start at index 0 of course
      */
-    index   = 0;
+    index = 0;
 
     /* Pick out the next token from the token source
      * Remember we just get a pointer (reference if you like) here
      * and so if we store it anywhere, we don't set any pointers to auto free it.
      */
-    tok	    = tokenStream->tstream->tokenSource->nextToken(tokenStream->tstream->tokenSource);
+    tok = tokenStream->tstream->tokenSource->nextToken(tokenStream->tstream->tokenSource);
 
-    while   (tok != NULL && tok->type != ANTLR3_TOKEN_EOF)
+    while (tok != NULL && tok->type != ANTLR3_TOKEN_EOF)
     {
-	discard	    = ANTLR3_FALSE;	/* Assume we are not discarding	*/
+        discard = ANTLR3_FALSE; /* Assume we are not discarding	*/
 
-	/* I employ a bit of a trick, or perhaps hack here. Rather than
-	 * store a pointer to a structure in the override map and discard set
-	 * we store the value + 1 cast to a void *. Hence on systems where NULL = (void *)0
-	 * we can distinguish "not being there" from "being channel or type 0"
-	 */
+        /* I employ a bit of a trick, or perhaps hack here. Rather than
+         * store a pointer to a structure in the override map and discard set
+         * we store the value + 1 cast to a void *. Hence on systems where NULL = (void *)0
+         * we can distinguish "not being there" from "being channel or type 0"
+         */
 
-	if  (	tokenStream->discardSet							    != NULL
-	     && tokenStream->discardSet->get(tokenStream->discardSet, tok->getType(tok))    != NULL)
-	{
-	    discard = ANTLR3_TRUE;
-	}
-	else if (      tokenStream->discardOffChannel	== ANTLR3_TRUE
-		    && tok->getChannel(tok)		!= tokenStream->channel
-		    )
-	{
-	    discard = ANTLR3_TRUE;
-	}
-	else if	(   tokenStream->channelOverrides != NULL)
-	{
-	    /* See if this type is in the override map
-	     */
-	    channelI	= tokenStream->channelOverrides->get(tokenStream->channelOverrides, tok->getType(tok)+1);
+        if (tokenStream->discardSet != NULL
+            && tokenStream->discardSet->get(tokenStream->discardSet, tok->getType(tok)) != NULL)
+        {
+            discard = ANTLR3_TRUE;
+        }
+        else if (   tokenStream->discardOffChannel == ANTLR3_TRUE
+                 && tok->getChannel(tok) != tokenStream->channel
+                 )
+        {
+            discard = ANTLR3_TRUE;
+        }
+        else if (tokenStream->channelOverrides != NULL)
+        {
+            /* See if this type is in the override map
+             */
+            channelI = tokenStream->channelOverrides->get(tokenStream->channelOverrides, tok->getType(tok) + 1);
 
-	    if	(channelI != NULL)
-	    {
-		/* Override found
-		 */
-		tok->setChannel(tok, ANTLR3_UINT32_CAST(channelI) - 1);
-	    }
-	}
-	
-	/* If not discarding it, add it to the list at the current index
-	 */
-	if  (discard == ANTLR3_FALSE)
-	{
-	    /* Add it, indicating that we will delete it and the table should not
-	     */
-	    tok->setTokenIndex(tok, index);
-	    tokenStream->p++;
-	    tokenStream->tokens->add(tokenStream->tokens, (void *)tok, NULL);
-	    index++;
-	}
-	
-	tok	    = tokenStream->tstream->tokenSource->nextToken(tokenStream->tstream->tokenSource);
+            if (channelI != NULL)
+            {
+                /* Override found
+                 */
+                tok->setChannel(tok, ANTLR3_UINT32_CAST(channelI) - 1);
+            }
+        }
+
+        /* If not discarding it, add it to the list at the current index
+         */
+        if (discard == ANTLR3_FALSE)
+        {
+            /* Add it, indicating that we will delete it and the table should not
+             */
+            tok->setTokenIndex(tok, index);
+            tokenStream->p++;
+            tokenStream->tokens->add(tokenStream->tokens, (void *) tok, NULL);
+            index++;
+        }
+
+        tok = tokenStream->tstream->tokenSource->nextToken(tokenStream->tstream->tokenSource);
     }
 
-    /* Set the consume pointer to the first token that is on our channel
-     */
-    tokenStream->p  = 0;
-    tokenStream->p  = skipOffTokenChannels(tokenStream, tokenStream->p);
-
-    /* Cache the size so we don't keep doing indirect method calls
+    /* Cache the size so we don't keep doing indirect method calls. We do this as
+     * early as possible so that anything after this may utilize the cached value.
      */
     tokenStream->tstream->istream->cachedSize = tokenStream->tokens->count;
 
+    /* Set the consume pointer to the first token that is on our channel
+     */
+    tokenStream->p = 0;
+    tokenStream->p = skipOffTokenChannels(tokenStream, tokenStream->p);
+
 }
-/** Given a starting index, return the index of the first on-channel
- *  token.
- */
+
+/// Given a starting index, return the index of the first on-channel
+///  token.
+///
 static ANTLR3_UINT32
-skipOffTokenChannels(pANTLR3_COMMON_TOKEN_STREAM tokenStream, ANTLR3_INT32 i)
-{
-    ANTLR3_INT32	    n;
-    pANTLR3_COMMON_TOKEN    tok;
+skipOffTokenChannels(pANTLR3_COMMON_TOKEN_STREAM tokenStream, ANTLR3_INT32 i) {
+    ANTLR3_INT32 n;
+    pANTLR3_COMMON_TOKEN tok;
 
-    n	= tokenStream->tstream->istream->cachedSize;
+    n = tokenStream->tstream->istream->cachedSize;
 
-    while   (	   i < n )
+    while (i < n)
     {
-	tok =	tokenStream->tstream->get(tokenStream->tstream, i);
+        tok =  (pANTLR3_COMMON_TOKEN)tokenStream->tokens->elements[i].element;
 
-	if  (tok == NULL || tok->getChannel(tok) != tokenStream->channel)
-	{
-	    i++;
-	}
-	else
-	{
-	    return i;
-	}
+        if (tok->channel!= tokenStream->channel)
+        {
+            i++;
+        }
+        else
+        {
+            return i;
+        }
     }
     return i;
 }
@@ -969,20 +1005,20 @@ skipOffTokenChannels(pANTLR3_COMMON_TOKEN_STREAM tokenStream, ANTLR3_INT32 i)
 static ANTLR3_UINT32
 skipOffTokenChannelsReverse(pANTLR3_COMMON_TOKEN_STREAM tokenStream, ANTLR3_INT32 x)
 {
-    pANTLR3_COMMON_TOKEN    tok;
+    pANTLR3_COMMON_TOKEN tok;
 
-    while   ( x >= 0 )
+    while (x >= 0)
     {
-	tok =	tokenStream->tstream->get(tokenStream->tstream, x);
-
-	if  (tok == NULL || (tok->getChannel(tok) != tokenStream->channel))
-	{
-	    x--;
-	}
-	else
-	{
-	    return x;
-	}
+        tok =  (pANTLR3_COMMON_TOKEN)tokenStream->tokens->elements[x].element;
+        
+        if ((tok->channel != tokenStream->channel))
+        {
+            x--;
+        }
+        else
+        {
+            return x;
+        }
     }
     return x;
 }

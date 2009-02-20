@@ -4,6 +4,35 @@
 /// Java implementation.
 ///
 
+// [The "BSD licence"]
+// Copyright (c) 2005-2009 Jim Idle, Temporal Wave LLC
+// http://www.temporal-wave.com
+// http://www.linkedin.com/in/jimidle
+//
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #include    <antlr3bitset.h>
 
 // External interface
@@ -144,7 +173,7 @@ antlr3BitsetCopy(pANTLR3_BITSET_LIST blist)
 		return	NULL;
     }
 
-	ANTLR3_MEMMOVE(bitset->blist.bits, blist->bits, (ANTLR3_UINT64)(numElements * sizeof(ANTLR3_BITWORD)));
+	ANTLR3_MEMCPY(bitset->blist.bits, blist->bits, (ANTLR3_UINT64)(numElements * sizeof(ANTLR3_BITWORD)));
 
     // All seems good
     //
@@ -167,7 +196,7 @@ antlr3BitsetClone(pANTLR3_BITSET inSet)
 
     // Install the actual bits in the source set
     //
-    ANTLR3_MEMMOVE(bitset->blist.bits, inSet->blist.bits, (ANTLR3_UINT64)(inSet->blist.length * sizeof(ANTLR3_BITWORD)));
+    ANTLR3_MEMCPY(bitset->blist.bits, inSet->blist.bits, (ANTLR3_UINT64)(inSet->blist.length * sizeof(ANTLR3_BITWORD)));
 
     // All seems good
     //
@@ -376,7 +405,7 @@ grow(pANTLR3_BITSET bitset, ANTLR3_INT32 newSize)
     {
 		// Copy existing bits
 		//
-		ANTLR3_MEMMOVE((void *)newBits, (const void *)bitset->blist.bits, (size_t)(bitset->blist.length * sizeof(ANTLR3_BITWORD)));
+		ANTLR3_MEMCPY((void *)newBits, (const void *)bitset->blist.bits, (size_t)(bitset->blist.length * sizeof(ANTLR3_BITWORD)));
 
 		// Out with the old bits... de de de derrr
 		//

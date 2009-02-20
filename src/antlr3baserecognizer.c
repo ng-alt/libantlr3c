@@ -8,6 +8,35 @@
  */
 #include    <antlr3baserecognizer.h>
 
+// [The "BSD licence"]
+// Copyright (c) 2005-2009 Jim Idle, Temporal Wave LLC
+// http://www.temporal-wave.com
+// http://www.linkedin.com/in/jimidle
+//
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #ifdef	ANTLR3_WINDOWS
 #pragma warning( disable : 4100 )
 #endif
@@ -85,21 +114,22 @@ antlr3BaseRecognizerNew(ANTLR3_UINT32 type, ANTLR3_UINT32 sizeHint, pANTLR3_RECO
 		//
 		recognizer->state->errorRecovery	= ANTLR3_FALSE;
 		recognizer->state->lastErrorIndex	= -1;
-		recognizer->state->failed			= ANTLR3_FALSE;
+		recognizer->state->failed		= ANTLR3_FALSE;
 		recognizer->state->errorCount		= 0;
 		recognizer->state->backtracking		= 0;
 		recognizer->state->following		= NULL;
-		recognizer->state->ruleMemo			= NULL;
+		recognizer->state->ruleMemo		= NULL;
 		recognizer->state->tokenNames		= NULL;
-		recognizer->state->sizeHint			= sizeHint;
+		recognizer->state->sizeHint             = sizeHint;
 		recognizer->state->tokSource		= NULL;
+                recognizer->state->tokFactory           = NULL;
 
 		// Rather than check to see if we must initialize
 		// the stack every time we are asked for an new rewrite stream
 		// we just always create an empty stack and then just
 		// free it when the base recognizer is freed.
 		//
-		recognizer->state->rStreams			= antlr3VectorNew(0);  // We don't know the size.
+		recognizer->state->rStreams		= antlr3VectorNew(0);  // We don't know the size.
 
 		if	(recognizer->state->rStreams == NULL)
 		{
@@ -121,41 +151,41 @@ antlr3BaseRecognizerNew(ANTLR3_UINT32 type, ANTLR3_UINT32 sizeHint, pANTLR3_RECO
 		
     // Install the BR API
     //
-    recognizer->alreadyParsedRule				= alreadyParsedRule;
-    recognizer->beginResync						= beginResync;
-    recognizer->combineFollows					= combineFollows;
-    recognizer->beginBacktrack					= beginBacktrack;
-    recognizer->endBacktrack					= endBacktrack;
-    recognizer->computeCSRuleFollow				= computeCSRuleFollow;
-    recognizer->computeErrorRecoverySet			= computeErrorRecoverySet;
-    recognizer->consumeUntil					= consumeUntil;
-    recognizer->consumeUntilSet					= consumeUntilSet;
-    recognizer->displayRecognitionError			= displayRecognitionError;
-    recognizer->endResync						= endResync;
-    recognizer->exConstruct						= antlr3MTExceptionNew;
-    recognizer->getRuleInvocationStack			= getRuleInvocationStack;
-    recognizer->getRuleInvocationStackNamed		= getRuleInvocationStackNamed;
-    recognizer->getRuleMemoization				= getRuleMemoization;
-    recognizer->match							= match;
-    recognizer->matchAny						= matchAny;
-    recognizer->memoize							= memoize;
-    recognizer->mismatch						= mismatch;
-	recognizer->mismatchIsUnwantedToken			= mismatchIsUnwantedToken;
-	recognizer->mismatchIsMissingToken			= mismatchIsMissingToken;
-    recognizer->recover							= recover;
-    recognizer->recoverFromMismatchedElement	= recoverFromMismatchedElement;
-    recognizer->recoverFromMismatchedSet		= recoverFromMismatchedSet;
-    recognizer->recoverFromMismatchedToken		= recoverFromMismatchedToken;
-	recognizer->getNumberOfSyntaxErrors			= getNumberOfSyntaxErrors;
-    recognizer->reportError						= reportError;
-    recognizer->reset							= reset;
-    recognizer->synpred							= synpred;
-    recognizer->toStrings						= toStrings;
-	recognizer->getCurrentInputSymbol			= getCurrentInputSymbol;
-	recognizer->getMissingSymbol				= getMissingSymbol;
-	recognizer->debugger						= NULL;
+    recognizer->alreadyParsedRule           = alreadyParsedRule;
+    recognizer->beginResync                 = beginResync;
+    recognizer->combineFollows              = combineFollows;
+    recognizer->beginBacktrack              = beginBacktrack;
+    recognizer->endBacktrack                = endBacktrack;
+    recognizer->computeCSRuleFollow         = computeCSRuleFollow;
+    recognizer->computeErrorRecoverySet     = computeErrorRecoverySet;
+    recognizer->consumeUntil                = consumeUntil;
+    recognizer->consumeUntilSet             = consumeUntilSet;
+    recognizer->displayRecognitionError     = displayRecognitionError;
+    recognizer->endResync                   = endResync;
+    recognizer->exConstruct                 = antlr3MTExceptionNew;
+    recognizer->getRuleInvocationStack      = getRuleInvocationStack;
+    recognizer->getRuleInvocationStackNamed = getRuleInvocationStackNamed;
+    recognizer->getRuleMemoization          = getRuleMemoization;
+    recognizer->match                       = match;
+    recognizer->matchAny                    = matchAny;
+    recognizer->memoize                     = memoize;
+    recognizer->mismatch                    = mismatch;
+    recognizer->mismatchIsUnwantedToken     = mismatchIsUnwantedToken;
+    recognizer->mismatchIsMissingToken      = mismatchIsMissingToken;
+    recognizer->recover                     = recover;
+    recognizer->recoverFromMismatchedElement= recoverFromMismatchedElement;
+    recognizer->recoverFromMismatchedSet    = recoverFromMismatchedSet;
+    recognizer->recoverFromMismatchedToken  = recoverFromMismatchedToken;
+    recognizer->getNumberOfSyntaxErrors     = getNumberOfSyntaxErrors;
+    recognizer->reportError                 = reportError;
+    recognizer->reset                       = reset;
+    recognizer->synpred                     = synpred;
+    recognizer->toStrings                   = toStrings;
+    recognizer->getCurrentInputSymbol       = getCurrentInputSymbol;
+    recognizer->getMissingSymbol            = getMissingSymbol;
+    recognizer->debugger                    = NULL;
 
-    recognizer->free							=  freeBR;
+    recognizer->free = freeBR;
 
     /* Initialize variables
      */
@@ -2111,7 +2141,7 @@ reset(pANTLR3_BASE_RECOGNIZER recognizer)
 			recognizer->state->ruleMemo = antlr3IntTrieNew(15);	/* 16 bit depth is enough for 32768 rules! */
 		}
 	}
-	recognizer->state->tokenNames		= NULL;
+	
 
     // Install a new following set
     //
@@ -2173,7 +2203,11 @@ getMissingSymbol			(pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_INT_STREAM	istre
 	token->setCharPositionInLine	(token, current->getCharPositionInLine(current));
 	token->setChannel				(token, ANTLR3_TOKEN_DEFAULT_CHANNEL);
 	token->setType					(token, expectedTokenType);
-
+    token->user1                    = current->user1;
+    token->user2                    = current->user2;
+    token->user3                    = current->user3;
+    token->custom                   = current->custom;
+    
 	// Create the token text that shows it has been inserted
 	//
 	token->setText8(token, (pANTLR3_UINT8)"<missing ");

@@ -3,6 +3,36 @@
  * this implementation can then be overridden by any higher implementation.
  * 
  */
+
+// [The "BSD licence"]
+// Copyright (c) 2005-2009 Jim Idle, Temporal Wave LLC
+// http://www.temporal-wave.com
+// http://www.linkedin.com/in/jimidle
+//
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #include    <antlr3basetreeadaptor.h>
 
 #ifdef	ANTLR3_WINDOWS
@@ -23,8 +53,8 @@ static	pANTLR3_BASE_TREE	dbgBecomeRoot			(pANTLR3_BASE_TREE_ADAPTOR adaptor, pAN
 static	pANTLR3_BASE_TREE	rulePostProcessing		(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE root);
 static	void				addChildToken			(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t, pANTLR3_COMMON_TOKEN child);
 static	void				dbgAddChildToken		(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t, pANTLR3_COMMON_TOKEN child);
-static	pANTLR3_BASE_TREE	becomeRootToken			(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_COMMON_TOKEN newRoot, pANTLR3_BASE_TREE oldRoot);
-static	pANTLR3_BASE_TREE	dbgBecomeRootToken		(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_COMMON_TOKEN newRoot, pANTLR3_BASE_TREE oldRoot);
+static	pANTLR3_BASE_TREE	becomeRootToken			(pANTLR3_BASE_TREE_ADAPTOR adaptor, void * newRoot, pANTLR3_BASE_TREE oldRoot);
+static	pANTLR3_BASE_TREE	dbgBecomeRootToken		(pANTLR3_BASE_TREE_ADAPTOR adaptor, void * newRoot, pANTLR3_BASE_TREE oldRoot);
 static	pANTLR3_BASE_TREE	createTypeToken			(pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenType, pANTLR3_COMMON_TOKEN fromToken);
 static	pANTLR3_BASE_TREE	dbgCreateTypeToken		(pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenType, pANTLR3_COMMON_TOKEN fromToken);
 static	pANTLR3_BASE_TREE	createTypeTokenText		(pANTLR3_BASE_TREE_ADAPTOR adaptor, ANTLR3_UINT32 tokenType, pANTLR3_COMMON_TOKEN fromToken, pANTLR3_UINT8 text);
@@ -61,7 +91,7 @@ antlr3BaseTreeAdaptorInit(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_DEBUG_EVENT
 																				becomeRoot;
 		adaptor->addChildToken			= (void   (*)(pANTLR3_BASE_TREE_ADAPTOR, void *, pANTLR3_COMMON_TOKEN))	
 																				addChildToken;
-		adaptor->becomeRootToken		= (void * (*)(pANTLR3_BASE_TREE_ADAPTOR, pANTLR3_COMMON_TOKEN, void *))	
+		adaptor->becomeRootToken		= (void * (*)(pANTLR3_BASE_TREE_ADAPTOR, void *, void *))
 																				becomeRootToken;
 		adaptor->createTypeToken		= (void * (*)(pANTLR3_BASE_TREE_ADAPTOR, ANTLR3_UINT32, pANTLR3_COMMON_TOKEN))
 																				createTypeToken;
@@ -82,7 +112,7 @@ antlr3BaseTreeAdaptorInit(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_DEBUG_EVENT
 																				dbgBecomeRoot;
 		adaptor->addChildToken			= (void   (*)(pANTLR3_BASE_TREE_ADAPTOR, void *, pANTLR3_COMMON_TOKEN))
                                                                                 dbgAddChildToken;
-		adaptor->becomeRootToken		= (void * (*)(pANTLR3_BASE_TREE_ADAPTOR, pANTLR3_COMMON_TOKEN, void *))
+		adaptor->becomeRootToken		= (void * (*)(pANTLR3_BASE_TREE_ADAPTOR, void *, void *))
                                                                                 dbgBecomeRootToken;
 		adaptor->createTypeToken		= (void * (*)(pANTLR3_BASE_TREE_ADAPTOR, ANTLR3_UINT32, pANTLR3_COMMON_TOKEN))
                                                                                 dbgCreateTypeToken;
@@ -482,6 +512,8 @@ dbgAddChildToken		(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE t, pANTL
 static	pANTLR3_BASE_TREE	
 becomeRoot	(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE newRootTree, pANTLR3_BASE_TREE oldRootTree)
 {
+    pANTLR3_BASE_TREE saveRoot;
+
 	/* Protect against tree rewrites if we are in some sort of error
 	 * state, but have tried to recover. In C we can end up with a null pointer
 	 * for a tree that was not produced.
@@ -507,13 +539,19 @@ becomeRoot	(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE newRootTree, pA
 		{
 			/* TODO: Handle tree exceptions 
 			 */
-			ANTLR3_FPRINTF(stderr, "More than one node as root! TODO: Create tree exception hndling\n");
+			ANTLR3_FPRINTF(stderr, "More than one node as root! TODO: Create tree exception handling\n");
 			return newRootTree;
 		}
 
-		/* The new root is the first child
+		/* The new root is the first child, keep track of the original newRoot
+         * because if it was a Nil Node, then we can reuse it now.
 		 */
+        saveRoot    = newRootTree;
 		newRootTree = newRootTree->getChild(newRootTree, 0);
+
+        // Reclaim the old nilNode()
+        //
+        saveRoot->reuse(saveRoot);
 	}
 
 	/* Add old root into new root. addChild takes care of the case where oldRoot
@@ -522,6 +560,21 @@ becomeRoot	(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE newRootTree, pA
 	 */
 	newRootTree->addChild(newRootTree, oldRootTree);
 
+    // If the oldroot tree was a nil node, then we know at this point
+    // it has become orphaned by the rewrite logic, so we tell it to do
+    // whatever it needs to do to be reused.
+    //
+    if  (oldRootTree->isNilNode(oldRootTree))
+    {
+        // We have taken an old Root Tree and appended all its children to the new
+        // root. In addition though it was a nil node, which means the generated code
+        // will not reuse it again, so we will reclaim it here. First we want to zero out
+        // any pointers it was carrying around. We are just the baseTree handler so we
+        // don't know necessarilly know how to do this for the real node, we just ask the tree itself
+        // to do it.
+        //
+        oldRootTree->reuse(oldRootTree);
+    }
 	/* Always returns new root structure
 	 */
 	return	newRootTree;
@@ -543,6 +596,13 @@ dbgBecomeRoot	(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE newRootTree,
 static	pANTLR3_BASE_TREE	
    rulePostProcessing	(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE_TREE root)
 {
+    pANTLR3_BASE_TREE saveRoot;
+
+    // Keep track of the root we are given. If it is a nilNode, then we
+    // can reuse it rather than orphaning it!
+    //
+    saveRoot = root;
+
 	if (root != NULL && root->isNilNode(root))
 	{
 		if	(root->getChildCount(root) == 0)
@@ -554,6 +614,12 @@ static	pANTLR3_BASE_TREE
 			root = root->getChild(root, 0);
 			root->setParent(root, NULL);
 			root->setChildIndex(root, -1);
+
+            // The root we were given was a nil node, wiht one child, which means it has
+            // been abandoned and would be lost in the node factory. However
+            // nodes can be flagged as resuable to prevent this terrible waste
+            //
+            saveRoot->reuse(saveRoot);
 		}
 	}
 
@@ -564,12 +630,12 @@ static	pANTLR3_BASE_TREE
  *  to the root of the tree.
  */
 static	pANTLR3_BASE_TREE	
-   becomeRootToken	(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_COMMON_TOKEN newRoot, pANTLR3_BASE_TREE oldRoot)
+   becomeRootToken	(pANTLR3_BASE_TREE_ADAPTOR adaptor, void * newRoot, pANTLR3_BASE_TREE oldRoot)
 {
 	return	adaptor->becomeRoot(adaptor, adaptor->create(adaptor, newRoot), oldRoot);
 }
 static	pANTLR3_BASE_TREE	
-dbgBecomeRootToken	(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_COMMON_TOKEN newRoot, pANTLR3_BASE_TREE oldRoot)
+dbgBecomeRootToken	(pANTLR3_BASE_TREE_ADAPTOR adaptor, void * newRoot, pANTLR3_BASE_TREE oldRoot)
 {
 	pANTLR3_BASE_TREE	t;
 

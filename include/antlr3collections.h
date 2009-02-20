@@ -1,6 +1,35 @@
 #ifndef	ANTLR3COLLECTIONS_H
 #define	ANTLR3COLLECTIONS_H
 
+// [The "BSD licence"]
+// Copyright (c) 2005-2009 Jim Idle, Temporal Wave LLC
+// http://www.temporal-wave.com
+// http://www.linkedin.com/in/jimidle
+//
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #include    <antlr3defs.h>
 
 
@@ -89,6 +118,10 @@ typedef	struct	ANTLR3_HASH_TABLE_struct
     /** How many elements currently exist in the table.
      */
     ANTLR3_UINT32		count;
+
+    /** Whether the hash table should strdup the keys it is given or not.
+     */
+    ANTLR3_BOOLEAN              doStrdup;
 
     /** Pointer to function to completely delete this table
      */
@@ -191,6 +224,7 @@ typedef struct ANTLR3_VECTOR_ELEMENT_struct
 }
     ANTLR3_VECTOR_ELEMENT, *pANTLR3_VECTOR_ELEMENT;
 
+#define ANTLR3_VECTOR_INTERNAL_SIZE     16
 /* Structure that represents a vector collection. A vector is a simple list
  * that contains a pointer to the element and a pointer to a function that
  * that can free the element if it is removed. It auto resizes but does not
@@ -207,6 +241,15 @@ typedef struct ANTLR3_VECTOR_struct
     /** Number of entries currently in the list;
      */
     ANTLR3_UINT32   count;
+
+    /** Many times, a vector holds just a few nodes in an AST and it
+     * is too much overhead to malloc the space for elements so
+     * at the expense of a few bytes of memory, we hold the first
+     * few elements internally. It means we must copy them when
+     * we grow beyond this initial size, but that is less overhead than
+     * the malloc/free callas we would otherwise require.
+     */
+    ANTLR3_VECTOR_ELEMENT   internal[ANTLR3_VECTOR_INTERNAL_SIZE];
 
     /** Indicates if the structure was made by a factory, in which
      *  case only the factory can free the memory for the actual vector,
@@ -230,22 +273,39 @@ typedef struct ANTLR3_VECTOR_struct
 }
     ANTLR3_VECTOR;
 
+/** Default vector pool size if otherwise unspecified
+ */
+#define ANTLR3_FACTORY_VPOOL_SIZE 256
+
 /** Structure that tracks vectors in a vector and auto deletes the vectors
  *  in the vector factory when closed.
  */
 typedef struct ANTLR3_VECTOR_FACTORY_struct
 {
-	/** Vector of all the vectors created so far
-	 */
-	pANTLR3_VECTOR  vectors;
 
-	/** Function to close the vector factory
+        /** List of all vector pools allocated so far
+         */
+        pANTLR3_VECTOR      *pools;
+
+        /** Count of the vector pools allocated so far (current active pool)
+         */
+        ANTLR3_INT32         thisPool;
+
+        /** The next vector available in the pool
+         */
+        ANTLR3_UINT32        nextVector;
+
+        /** Trick to quickly initialize a new vector via memcpy and not a function call
+         */
+        ANTLR3_VECTOR        unTruc;
+
+       	/** Function to close the vector factory
 	 */
-	void			(*close)	    (struct ANTLR3_VECTOR_FACTORY_struct * factory);
+	void                (*close)	    (struct ANTLR3_VECTOR_FACTORY_struct * factory);
 
 	/** Function to supply a new vector
 	 */
-	pANTLR3_VECTOR  (*newVector)    (struct ANTLR3_VECTOR_FACTORY_struct * factory);
+	pANTLR3_VECTOR      (*newVector)    (struct ANTLR3_VECTOR_FACTORY_struct * factory);
 
 }
 ANTLR3_VECTOR_FACTORY; 

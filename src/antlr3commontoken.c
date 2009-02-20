@@ -3,6 +3,36 @@
  * java. Custom tokens should create this structure and then append to it using the 
  * custom pointer to install their own structure and API.
  */
+
+// [The "BSD licence"]
+// Copyright (c) 2005-2009 Jim Idle, Temporal Wave LLC
+// http://www.temporal-wave.com
+// http://www.linkedin.com/in/jimidle
+//
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #include    <antlr3.h>
 
 /* Token API
@@ -29,7 +59,6 @@ static  pANTLR3_STRING  toString				(pANTLR3_COMMON_TOKEN token);
 /* Factory API
  */
 static	void			factoryClose	(pANTLR3_TOKEN_FACTORY factory);
-static  void			setInputStream	(pANTLR3_TOKEN_FACTORY factory, pANTLR3_INPUT_STREAM input);
 static	pANTLR3_COMMON_TOKEN	newToken	(void);
 
 /* Internal management functions
@@ -76,12 +105,11 @@ antlr3TokenFactoryNew(pANTLR3_INPUT_STREAM input)
      */
     factory->newToken	    =  newPoolToken;
     factory->close			=  factoryClose;
-    factory->setInputStream = setInputStream;
     
     /* Allocate the initial pool
      */
     factory->thisPool	= -1;
-    factory->pools	= NULL;
+    factory->pools      = NULL;
     newPool(factory);
 
     /* Factory space is good, we now want to initialize our cheating token
@@ -92,25 +120,14 @@ antlr3TokenFactoryNew(pANTLR3_INPUT_STREAM input)
     /* Set some initial variables for future copying
      */
     factory->unTruc.factoryMade	= ANTLR3_TRUE;
-	
-    setInputStream(factory, input);
+
+    // Input stream
+    //
+    factory->input				=  input;
+    factory->unTruc.input       =  input;
     
     return  factory;
 
-}
-static void
-setInputStream	(pANTLR3_TOKEN_FACTORY factory, pANTLR3_INPUT_STREAM input)
-{
-    factory->input				=  input;
-    factory->unTruc.input		=  input;
-	if	(input != NULL)
-	{
-		factory->unTruc.strFactory	= input->strFactory;
-	}
-	else
-	{
-		factory->unTruc.strFactory = NULL;
-	}
 }
 
 static void
@@ -133,10 +150,6 @@ newPool(pANTLR3_TOKEN_FACTORY factory)
 			    (pANTLR3_COMMON_TOKEN) 
 				ANTLR3_MALLOC((size_t)(sizeof(ANTLR3_COMMON_TOKEN) * ANTLR3_FACTORY_POOL_SIZE));
 
-
-
-
-
     /* Reset the counters
      */
     factory->nextToken	= 0;
@@ -146,34 +159,40 @@ newPool(pANTLR3_TOKEN_FACTORY factory)
     return;
 }
 
-static	pANTLR3_COMMON_TOKEN    
-newPoolToken	    (pANTLR3_TOKEN_FACTORY factory)
+static pANTLR3_COMMON_TOKEN
+newPoolToken(pANTLR3_TOKEN_FACTORY factory)
 {
-    pANTLR3_COMMON_TOKEN    token;
+    pANTLR3_COMMON_TOKEN token;
 
     /* See if we need a new token pool before allocating a new
      * one
      */
-    if	(factory->nextToken >= ANTLR3_FACTORY_POOL_SIZE)
+    if (factory->nextToken >= ANTLR3_FACTORY_POOL_SIZE)
     {
-	/* We ran out of tokens in the current pool, so we need a new pool
-	 */
-	newPool(factory);
+        /* We ran out of tokens in the current pool, so we need a new pool
+         */
+        newPool(factory);
     }
 
     /* Assuming everything went well (we are trying for performance here so doing minimal
      * error checking. Then we can work out what the pointer is to the next token.
      */
-    token   = factory->pools[factory->thisPool] + factory->nextToken;
+    token = factory->pools[factory->thisPool] + factory->nextToken;
     factory->nextToken++;
 
     /* We have our token pointer now, so we can initialize it to the predefined model.
      */
-    ANTLR3_MEMMOVE((void *)token, (const void *)&factory->unTruc, (ANTLR3_UINT32)sizeof(ANTLR3_COMMON_TOKEN));
+    antlr3SetTokenAPI(token);
+
+    /* It is factory made, and we need to copy the string factory pointer
+     */
+    token->factoryMade  = ANTLR3_TRUE;
+    token->strFactory   = factory->input == NULL ? NULL : factory->input->strFactory;
+    token->input        = factory->input;
 
     /* And we are done
      */
-    return  token;
+    return token;
 }
 
 static	void

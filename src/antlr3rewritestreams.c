@@ -4,6 +4,35 @@
 /// by rules that are subject to rewrite directives.
 ///
 
+// [The "BSD licence"]
+// Copyright (c) 2005-2009 Jim Idle, Temporal Wave LLC
+// http://www.temporal-wave.com
+// http://www.linkedin.com/in/jimidle
+//
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #include    <antlr3rewritestreams.h>
 
 // Static support function forward declarations for the stream types.
@@ -67,6 +96,68 @@ freeRS	(pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream)
 	stream->rec->state->rStreams->add(stream->rec->state->rStreams, stream, (void(*)(void *))expungeRS);
 }
 
+/** Do special nilNode reuse detection for node streams.
+ */
+static void
+freeNodeRS(pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream)
+{
+    pANTLR3_BASE_TREE tree;
+
+    // Before placing the stream back in the pool, we
+	// need to clear any vector it has. This is so any
+	// free pointers that are associated with the
+	// entires are called. However, if this particular function is called
+    // then we know that the entries in the stream are definately
+    // tree nodes. Hence we check to see if any of them were nilNodes as
+    // if they were, we can reuse them.
+	//
+	if	(stream->elements != NULL)
+	{
+        // We have some elements to traverse
+        //
+        ANTLR3_UINT32 i;
+
+        for (i = 1; i<= stream->elements->count; i++)
+        {
+            tree = (pANTLR3_BASE_TREE)(stream->elements->elements[i-1].element);
+            if  (tree->isNilNode(tree))
+            {
+                 tree->reuse(tree);
+            }
+
+        }
+		// Protext factory generated nodes as we cannot clear them,
+		// the factory is responsible for that.
+		//
+		if	(stream->elements->factoryMade == ANTLR3_TRUE)
+		{
+			stream->elements = NULL;
+		}
+		else
+		{
+			stream->elements->clear(stream->elements);
+			stream->freeElements = ANTLR3_TRUE;
+		}
+	}
+	else
+	{
+        if  (stream->singleElement != NULL)
+        {
+            tree = (pANTLR3_BASE_TREE)(stream->singleElement);
+            if  (tree->isNilNode(tree))
+            {
+                 tree->reuse(tree);
+            }
+        }
+		stream->freeElements = ANTLR3_FALSE; // Just in case
+	}
+
+	// Add the stream into the recognizer stream stack vector
+	// adding the stream memory free routine so that
+	// it is thrown away when the stack vector is destroyed
+	//
+	stream->rec->state->rStreams->add(stream->rec->state->rStreams, stream, (void(*)(void *))expungeRS);
+}
 static void
 expungeRS(pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream)
 {
@@ -284,7 +375,7 @@ antlr3RewriteRuleSubtreeStreamNewAE(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_B
 	//
 	stream->dup			= dupTree;
 	stream->nextNode	= nextNode;
-
+    stream->free        = freeNodeRS;
 	return stream;
 
 }
@@ -306,6 +397,7 @@ antlr3RewriteRuleSubtreeStreamNewAEE(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_
 	//
 	stream->dup			= dupTree;
 	stream->nextNode	= nextNode;
+    stream->free        = freeNodeRS;
 
 	return stream;
 }
@@ -328,6 +420,7 @@ antlr3RewriteRuleSubtreeStreamNewAEV(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_
 	//
 	stream->dup			= dupTree;
 	stream->nextNode	= nextNode;
+    stream->free        = freeNodeRS;
 
 	return stream;
 }
@@ -352,6 +445,7 @@ antlr3RewriteRuleNODEStreamNewAE(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BASE
 	stream->dup			= dupTreeNode;
 	stream->toTree		= toTreeNode;
 	stream->nextNode	= nextNodeNode;
+    stream->free        = freeNodeRS;
 
 	return stream;
 }
@@ -370,6 +464,7 @@ antlr3RewriteRuleNODEStreamNewAEE(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BAS
 	stream->dup			= dupTreeNode;
 	stream->toTree		= toTreeNode;
 	stream->nextNode	= nextNodeNode;
+    stream->free        = freeNodeRS;
 
 	return stream;
 }
@@ -388,7 +483,8 @@ antlr3RewriteRuleNODEStreamNewAEV(pANTLR3_BASE_TREE_ADAPTOR adaptor, pANTLR3_BAS
 	stream->dup			= dupTreeNode;
 	stream->toTree		= toTreeNode;
 	stream->nextNode	= nextNodeNode;
-
+    stream->free        = freeNodeRS;
+    
 	return stream;
 }
 
@@ -437,9 +533,13 @@ add	    (pANTLR3_REWRITE_RULE_ELEMENT_STREAM stream, void * el, void (ANTLR3_CDE
 	//
 	if	(stream->elements == NULL)
 	{
-		stream->elements		= antlr3VectorNew(0);	// We will let the vector figure things out as it goes
+        pANTLR3_VECTOR_FACTORY factory = ((pANTLR3_COMMON_TREE_ADAPTOR)(stream->adaptor->super))->arboretum->vFactory;
+
+        
+		stream->elements		= factory->newVector(factory);
 		stream->freeElements	= ANTLR3_TRUE;			// We 'ummed it, so we play it son.
 	}
+    
 	stream->elements->add	(stream->elements, stream->singleElement, freePtr);
 	stream->elements->add	(stream->elements, el, freePtr);
 	stream->singleElement	= NULL;

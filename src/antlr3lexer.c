@@ -7,6 +7,36 @@
  * functions, then overrides any of these that are parser specific (usual
  * default implementation of base recognizer.
  */
+
+// [The "BSD licence"]
+// Copyright (c) 2005-2009 Jim Idle, Temporal Wave LLC
+// http://www.temporal-wave.com
+// http://www.linkedin.com/in/jimidle
+//
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #include    <antlr3lexer.h>
 
 static void					mTokens						(pANTLR3_LEXER lexer);
@@ -120,6 +150,7 @@ antlr3LexerNew(ANTLR3_UINT32 sizeHint, pANTLR3_RECOGNIZER_SHARED_STATE state)
     antlr3SetTokenAPI	  (specialT);
     specialT->setType	  (specialT, ANTLR3_TOKEN_EOF);
     specialT->factoryMade	= ANTLR3_TRUE;					// Prevent things trying to free() it
+    specialT->strFactory    = NULL;
 
 	// Initialize the skip token.
 	//
@@ -127,6 +158,7 @@ antlr3LexerNew(ANTLR3_UINT32 sizeHint, pANTLR3_RECOGNIZER_SHARED_STATE state)
     antlr3SetTokenAPI	  (specialT);
     specialT->setType	  (specialT, ANTLR3_TOKEN_INVALID);
     specialT->factoryMade	= ANTLR3_TRUE;					// Prevent things trying to free() it
+    specialT->strFactory    = NULL;
     return  lexer;
 }
 
@@ -187,18 +219,20 @@ nextTokenStr	    (pANTLR3_TOKEN_SOURCE toksource)
 		lexer->rec->state->error		    = ANTLR3_FALSE;	    // Start out without an exception
 		lexer->rec->state->failed		    = ANTLR3_FALSE;
 
-		// Record the start of the token in our input stream.
-		//
-		lexer->rec->state->channel						= ANTLR3_TOKEN_DEFAULT_CHANNEL;
-		lexer->rec->state->tokenStartCharIndex			= lexer->input->istream->index(lexer->input->istream);  
-		lexer->rec->state->tokenStartCharPositionInLine	= lexer->input->getCharPositionInLine(lexer->input);
-		lexer->rec->state->tokenStartLine				= lexer->input->getLine(lexer->input);
-		lexer->rec->state->text							= NULL;
+
 
 		// Now call the matching rules and see if we can generate a new token
 		//
 		for	(;;)
 		{
+            // Record the start of the token in our input stream.
+            //
+            lexer->rec->state->channel						= ANTLR3_TOKEN_DEFAULT_CHANNEL;
+            lexer->rec->state->tokenStartCharIndex			= lexer->input->istream->index(lexer->input->istream);
+            lexer->rec->state->tokenStartCharPositionInLine	= lexer->input->getCharPositionInLine(lexer->input);
+        	lexer->rec->state->tokenStartLine				= lexer->input->getLine(lexer->input);
+            lexer->rec->state->text							= NULL;
+
 			if  (lexer->input->istream->_LA(lexer->input->istream, 1) == ANTLR3_CHARSTREAM_EOF)
 			{
 				// Reached the end of the current stream, nothing more to do if this is
@@ -303,7 +337,7 @@ nextToken	    (pANTLR3_TOKEN_SOURCE toksource)
 		if  (lexer->rec->state->streams != NULL && lexer->rec->state->streams->size(lexer->rec->state->streams) > 0)
 		{
 			// We have another input stream in the stack so we
-			// need to revert to it, then resume the lop to check
+			// need to revert to it, then resume the loop to check
 			// it wasn't sitting at EOF itself.
 			//
 			lexer->popCharStream(lexer);
@@ -462,7 +496,15 @@ static void setCharStream   (pANTLR3_LEXER lexer,  pANTLR3_INPUT_STREAM input)
      */
     if	(lexer->rec->state->tokSource->strFactory == NULL)
     {
-	lexer->rec->state->tokSource->strFactory	= input->strFactory;
+        lexer->rec->state->tokSource->strFactory	= input->strFactory;
+
+        // Set the newly acquired string factory up for our pre-made tokens
+        // for EOF.
+        //
+        if (lexer->rec->state->tokSource->eofToken.strFactory == NULL)
+        {
+            lexer->rec->state->tokSource->eofToken.strFactory = input->strFactory;
+        }
     }
 
     /* This is a lexer, install the appropriate exception creator

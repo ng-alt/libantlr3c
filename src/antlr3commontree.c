@@ -5,6 +5,36 @@
 // to the user pointer in the tree unless you are building a different type
 // of structure.
 //
+
+// [The "BSD licence"]
+// Copyright (c) 2005-2009 Jim Idle, Temporal Wave LLC
+// http://www.temporal-wave.com
+// http://www.linkedin.com/in/jimidle
+//
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #include    <antlr3commontree.h>
 
 
@@ -21,6 +51,7 @@ static void					setParent				(pANTLR3_BASE_TREE tree, pANTLR3_BASE_TREE parent);
 static void    				setChildIndex			(pANTLR3_BASE_TREE tree, ANTLR3_INT32 i);
 static ANTLR3_INT32			getChildIndex			(pANTLR3_BASE_TREE tree);
 static void					createChildrenList		(pANTLR3_BASE_TREE tree);
+static void                 reuse                   (pANTLR3_BASE_TREE tree);
 
 // Factory functions for the Arboretum
 //
@@ -46,12 +77,20 @@ antlr3ArboretumNew(pANTLR3_STRING_FACTORY strFactory)
 	// Install a vector factory to create, track and free() any child
 	// node lists.
 	//
-	factory->vFactory					= antlr3VectorFactoryNew(32);
+	factory->vFactory					= antlr3VectorFactoryNew(0);
 	if	(factory->vFactory == NULL)
 	{
 		free(factory);
 		return	NULL;
 	}
+
+    // We also keep a reclaim stack, so that any Nil nodes that are
+    // orphaned are not just left in the pool but are reused, other wise
+    // we create 6 times as many nilNodes as ordinary nodes and use loads of
+    // memory. Perhaps at some point, the analysis phase will generate better
+    // code and we won't need to do this here.
+    //
+    factory->nilStack       =  antlr3StackNew(0);
 
     // Install factory API
     //
@@ -99,7 +138,7 @@ newPool(pANTLR3_ARBORETUM factory)
     //
     factory->pools[factory->thisPool]	=
 			    (pANTLR3_COMMON_TREE) 
-				ANTLR3_CALLOC(1, (size_t)(sizeof(ANTLR3_COMMON_TREE) * ANTLR3_FACTORY_POOL_SIZE));
+				ANTLR3_MALLOC((size_t)(sizeof(ANTLR3_COMMON_TREE) * ANTLR3_FACTORY_POOL_SIZE));
 
 
     // Reset the counters
@@ -116,6 +155,21 @@ newPoolTree	    (pANTLR3_ARBORETUM factory)
 {
 	pANTLR3_COMMON_TREE    tree;
 
+    // If we have anything on the re claim stack, reuse that sucker first
+    //
+    tree = factory->nilStack->peek(factory->nilStack);
+
+    if  (tree != NULL)
+    {
+        // Cool we got something we could reuse, it will have been cleaned up by
+        // whatever put it back on the stack (for instance if it had a child vector,
+        // that will have been cleared to hold zero entries and that vector will get reused too.
+        // It is the basetree pointer that is placed on the stack of course
+        //
+        factory->nilStack->pop(factory->nilStack);
+        return (pANTLR3_BASE_TREE)tree;
+
+    }
 	// See if we need a new tree pool before allocating a new tree
 	//
 	if	(factory->nextTree >= ANTLR3_FACTORY_POOL_SIZE)
@@ -133,7 +187,13 @@ newPoolTree	    (pANTLR3_ARBORETUM factory)
 
 	// We have our token pointer now, so we can initialize it to the predefined model.
 	//
-	ANTLR3_MEMMOVE((void *)tree, (const void *)&(factory->unTruc), (ANTLR3_UINT32)sizeof(ANTLR3_COMMON_TREE));
+    antlr3SetCTAPI(tree);
+
+    // Set some initial variables for future copying, including a string factory
+    // that we can use later for converting trees to strings.
+    //
+	tree->factory				= factory;
+    tree->baseTree.strFactory	= factory->unTruc.baseTree.strFactory;
 
 	// The super points to the common tree so we must override the one used by
 	// by the pre-built tree as otherwise we will always poitn to the same initial
@@ -197,6 +257,11 @@ factoryClose	    (pANTLR3_ARBORETUM factory)
 	//
 	factory->vFactory->close(factory->vFactory);
 
+    if  (factory->nilStack !=  NULL)
+    {
+        factory->nilStack->free(factory->nilStack);
+    }
+
 	// We now JUST free the pools because the C runtime CommonToken based tree
 	// cannot contain anything that was not made by this factory.
 	//
@@ -248,6 +313,7 @@ antlr3SetCTAPI(pANTLR3_COMMON_TREE tree)
 	tree->baseTree.setChildIndex			= setChildIndex;
 	tree->baseTree.getChildIndex			= getChildIndex;
 	tree->baseTree.createChildrenList		= createChildrenList;
+    tree->baseTree.reuse                    = reuse;
 	tree->baseTree.free						= NULL;	// Factory trees have no free function
 	
 	tree->baseTree.children	= NULL;
@@ -453,4 +519,24 @@ static	ANTLR3_INT32
 getChildIndex			(pANTLR3_BASE_TREE tree )
 {
 	return ((pANTLR3_COMMON_TREE)(tree->super))->childIndex;
+}
+
+/** Clean up any child vector that the tree might have, so it can be reused,
+ *  then add it into the reuse stack.
+ */
+static void
+reuse                   (pANTLR3_BASE_TREE tree)
+{
+    pANTLR3_COMMON_TREE	    cTree;
+
+	cTree   = (pANTLR3_COMMON_TREE)(tree->super);
+
+    if  (cTree->factory != NULL)
+    {
+        if  (cTree->baseTree.children != NULL)
+        {
+            cTree->baseTree.children->clear(cTree->baseTree.children);
+        }
+        cTree->factory->nilStack->push(cTree->factory->nilStack, tree, NULL);
+    }
 }
